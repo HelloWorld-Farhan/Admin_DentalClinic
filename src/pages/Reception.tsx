@@ -205,7 +205,7 @@ export const Reception: React.FC<ReceptionProps> = ({ onNotify, onOpenPowerBI, o
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-1.5 text-[#005c65] text-xs uppercase tracking-wider font-semibold mb-1">
-            <Desk className="w-4 h-4" />
+            <Monitor className="w-4 h-4" />
             <span>Central Patient Reception &amp; Admissions Wing</span>
           </div>
           <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">
@@ -328,7 +328,7 @@ export const Reception: React.FC<ReceptionProps> = ({ onNotify, onOpenPowerBI, o
                   strokeWidth="3.5"
                 />
               </svg>
-              <Desk className="w-4 h-4 text-[#005c65] absolute" />
+              <Monitor className="w-4 h-4 text-[#005c65] absolute" />
             </div>
           </div>
           <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
@@ -888,7 +888,7 @@ export const Reception: React.FC<ReceptionProps> = ({ onNotify, onOpenPowerBI, o
               <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <div className="w-9 h-9 rounded-lg bg-teal-50 text-[#005c65] flex items-center justify-center">
-                    <Desk className="w-5 h-5" />
+                    <Monitor className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-slate-900">Direct Patient Check-In</h3>

@@ -21,7 +21,11 @@ import {
 import { mockDoctors, mockORSuites } from '../data/mockData';
 import { Doctor } from '../types';
 
-export default function Doctors() {
+interface DoctorsProps {
+  onNotify?: (title: string, message: string, type: 'critical' | 'financial' | 'triage' | 'system') => void;
+}
+
+export default function Doctors({ onNotify }: DoctorsProps = {}) {
   const { showToast } = useOutletContext<{
     showToast: (type: 'success' | 'error' | 'info', title: string, desc?: string) => void;
   }>();

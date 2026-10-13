@@ -31,7 +31,11 @@ import {
   mockDepartmentMetrics 
 } from '../data/mockData';
 
-export default function Dashboard() {
+interface DashboardProps {
+  onNotify?: (title: string, message: string, type: 'critical' | 'financial' | 'triage' | 'system') => void;
+}
+
+export default function Dashboard({ onNotify }: DashboardProps = {}) {
   const { showToast, openPowerBi, openExport } = useOutletContext<{
     showToast: (type: 'success' | 'error' | 'info', title: string, desc?: string) => void;
     openPowerBi: () => void;
