@@ -35,8 +35,8 @@ interface LoginProps {
 export const OFFICIAL_ADMIN_CREDENTIALS = {
   email: 'admin@smileclinic.com',
   password: 'Admin@Smile2026#',
-  role: 'Chief Clinical Administrator',
-  name: 'Dr. Sneha Lal, MD',
+  role: 'Chief Clinical Administrator (Demo)',
+  name: 'Dr. Sneha Lal, MD (Demo Admin)',
 };
 
 export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, onLoginSuccess }) => {
@@ -90,12 +90,6 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
 
   const isPasswordValid = isMin8Chars && hasCapital && hasMin2Numbers && hasSpecialChar;
 
-  // Auto-fill official admin credentials
-  const fillOfficialCredentials = () => {
-    setEmail(OFFICIAL_ADMIN_CREDENTIALS.email);
-    setPassword(OFFICIAL_ADMIN_CREDENTIALS.password);
-    setLoginError(null);
-  };
 
   // Sign In Handler
   const handleSignIn = (e: React.FormEvent) => {
@@ -133,7 +127,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
       navigate('/dashboard');
     } else {
       setLoginError(
-        'Invalid email or password. Please use the official Admin credentials (admin@smileclinic.com / Admin@Smile2026#) or your registered staff account.'
+        'Invalid credentials. Please enter your authorized administrator email and password.'
       );
     }
   };
@@ -295,32 +289,6 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                       Empowering inpatient care teams, verified physicians, and administrative specialists with
                       zero-latency EHR synchronization and multi-factor biometric assurance.
                     </p>
-
-                    {/* Official Credentials Helper Box */}
-                    <div className="mt-4 p-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-xs space-y-2">
-                      <div className="flex items-center justify-between font-semibold text-teal-200">
-                        <span className="uppercase tracking-wider text-[11px]">Official Admin Credentials</span>
-                        <span className="bg-teal-400/20 text-teal-200 px-2 py-0.5 rounded text-[10px]">Ready</span>
-                      </div>
-                      <div className="font-mono bg-black/20 p-2.5 rounded-lg space-y-1 text-slate-100">
-                        <div className="flex justify-between">
-                          <span className="text-teal-300">Email:</span>
-                          <span className="font-bold">{OFFICIAL_ADMIN_CREDENTIALS.email}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-teal-300">Password:</span>
-                          <span className="font-bold">{OFFICIAL_ADMIN_CREDENTIALS.password}</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={fillOfficialCredentials}
-                        className="w-full mt-1 py-1.5 bg-teal-400/20 hover:bg-teal-400/30 text-teal-100 font-semibold rounded-lg transition-colors flex items-center justify-center space-x-1.5 text-xs"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                        <span>Auto-Fill Admin Credentials</span>
-                      </button>
-                    </div>
                   </motion.div>
                 ) : (
                   <motion.div
@@ -437,27 +405,6 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                     </p>
                   </div>
 
-                  {/* Credentials Banner */}
-                  <div className="p-3 bg-teal-50 border border-[#005c65]/20 rounded-xl flex items-center justify-between">
-                    <div className="text-xs">
-                      <span className="font-bold text-[#005c65] block">Designated Admin Credentials</span>
-                      <span className="text-slate-600">
-                        <strong className="text-slate-800">{OFFICIAL_ADMIN_CREDENTIALS.email}</strong> &bull; Pass:{' '}
-                        <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-900 font-mono text-[11px]">
-                          {OFFICIAL_ADMIN_CREDENTIALS.password}
-                        </code>
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={fillOfficialCredentials}
-                      className="px-3 py-1.5 bg-[#005c65] hover:bg-[#007782] text-white text-xs font-semibold rounded-lg transition-colors flex items-center space-x-1 shrink-0"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                      <span>Quick Fill</span>
-                    </button>
-                  </div>
-
                   {loginError && (
                     <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-start space-x-2">
                       <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
@@ -503,7 +450,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                             setEmail(e.target.value);
                             setLoginError(null);
                           }}
-                          placeholder="admin@smileclinic.com"
+                          placeholder="name@smileclinic.com"
                           className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#005c65]"
                         />
                       </div>
@@ -529,7 +476,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                             setPassword(e.target.value);
                             setLoginError(null);
                           }}
-                          placeholder="Admin@Smile2026#"
+                          placeholder="••••••••••••"
                           className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#005c65]"
                         />
                         <button
@@ -621,15 +568,6 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                       >
                         <Lock className="w-4 h-4" />
                         <span>Authorize &amp; Sign In</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={fillOfficialCredentials}
-                        className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 font-semibold text-xs rounded-lg flex items-center justify-center space-x-1.5 cursor-pointer"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Populate Official Credentials &amp; Authenticate</span>
                       </button>
                     </div>
                   </form>

@@ -48,18 +48,18 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profileModalTab, setProfileModalTab] = useState<'details' | 'security' | 'powerbi'>('details');
 
-  // Administrator Profile State
+  // Administrator Profile State (marked as Demo)
   const [userProfile, setUserProfile] = useState<UserProfileData>({
-    name: 'Dr. Sarah Sterling',
-    role: 'Chief Hospital Admin',
+    name: sessionStorage.getItem('admin_name') || 'Dr. Sneha Lal, MD (Demo Admin)',
+    role: 'Chief Clinical Admin (Demo)',
     npi: 'NPI-88492019',
     license: 'CA-MED-994821',
-    department: 'Hospital Administration & Surgical Directorate',
-    email: 's.sterling@smileclinic.com',
+    department: 'Hospital Administration & Surgical Directorate (Demo Environment)',
+    email: sessionStorage.getItem('admin_email') || 'admin@smileclinic.com',
     phone: '+1 (555) 942-8810',
     office: 'Tower A - Executive Wing, Suite 402',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=128&q=80',
-    bio: 'Board-certified Maxillofacial Surgeon specializing in hospital capacity optimization, robotic implant surgery, and enterprise HL7 integration.',
+    bio: 'Board-certified Maxillofacial Surgeon & Clinical Administrator in Smile Clinic Demo System.',
   });
 
   // Lock background window scrolling whenever any popup, drawer, or modal is open
