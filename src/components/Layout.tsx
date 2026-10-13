@@ -25,7 +25,11 @@ import {
   Calendar,
   RotateCw,
   UserCheck,
-  KeyRound
+  KeyRound,
+  Plus,
+  Radio,
+  UserPlus,
+  Send
 } from 'lucide-react';
 import { mockNotifications } from '../data/mockData';
 import { NotificationItem } from '../types';
@@ -34,6 +38,7 @@ import ExportModal from './ExportModal';
 import ProfileSettingsModal, { UserProfileData } from './ProfileSettingsModal';
 import ToastNotification, { ToastMessage } from './ToastNotification';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { ModalPortal } from './ModalPortal';
 
 interface LayoutProps {
   onLogout?: () => void;
@@ -45,8 +50,14 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [powerBiOpen, setPowerBiOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
+  const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [globalSearchTerm, setGlobalSearchTerm] = useState('');
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profileModalTab, setProfileModalTab] = useState<'details' | 'security' | 'powerbi'>('details');
+
+  const quickActionsRef = useRef<HTMLDivElement>(null);
 
   // Administrator Profile State (marked as Demo)
   const [userProfile, setUserProfile] = useState<UserProfileData>({
@@ -63,7 +74,7 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
   });
 
   // Lock background window scrolling whenever any popup, drawer, or modal is open
-  useBodyScrollLock(Boolean(mobileMenuOpen || notificationsOpen || profileOpen || powerBiOpen || exportOpen || profileModalOpen));
+  useBodyScrollLock(Boolean(mobileMenuOpen || notificationsOpen || profileOpen || powerBiOpen || exportOpen || profileModalOpen || broadcastModalOpen));
 
   // Today's Date and 5-second recurring live sync state
   const [currentDateFormatted] = useState(() => {
@@ -119,6 +130,9 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
       if (profileOpen && profileRef.current && !profileRef.current.contains(target)) {
         setProfileOpen(false);
       }
+      if (quickActionsOpen && quickActionsRef.current && !quickActionsRef.current.contains(target)) {
+        setQuickActionsOpen(false);
+      }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -126,6 +140,8 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
         setNotificationsOpen(false);
         setProfileOpen(false);
         setMobileMenuOpen(false);
+        setQuickActionsOpen(false);
+        setBroadcastModalOpen(false);
       }
     };
 
@@ -138,7 +154,7 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
       document.removeEventListener('touchstart', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [notificationsOpen, profileOpen]);
+  }, [notificationsOpen, profileOpen, quickActionsOpen]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -254,9 +270,92 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
         showToast={showToast}
       />
 
+      {/* Global Emergency Broadcast Modal */}
+      <AnimatePresence>
+        {broadcastModalOpen && (
+          <ModalPortal>
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setBroadcastModalOpen(false)}
+                className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative z-10 bg-white dark:bg-slate-900 border border-red-500/30 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
+              >
+                <div className="p-4 sm:p-5 bg-gradient-to-r from-red-600 to-rose-700 text-white flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                      <AlertTriangle className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-base">Emergency Clinical Broadcast</h3>
+                      <p className="text-xs text-red-100">Direct Alert to All Active Surgical Suites &amp; Triage</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setBroadcastModalOpen(false)}
+                    className="p-1.5 text-white/80 hover:text-white rounded-lg hover:bg-white/10"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!broadcastMessage.trim()) return;
+                    showToast('error', 'Emergency Clinical Alert Broadcasted', broadcastMessage.trim());
+                    setBroadcastModalOpen(false);
+                    setBroadcastMessage('');
+                  }} 
+                  className="p-5 sm:p-6 space-y-4"
+                >
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-2">
+                      Emergency Alert Message
+                    </label>
+                    <textarea
+                      value={broadcastMessage}
+                      onChange={(e) => setBroadcastMessage(e.target.value)}
+                      placeholder="e.g. Code Blue - OR-2 Immediate Anesthesia Assistance Required..."
+                      rows={4}
+                      required
+                      className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/40"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2.5 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setBroadcastModalOpen(false)}
+                      className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-600/30 flex items-center gap-2"
+                    >
+                      <Radio className="w-4 h-4 animate-pulse" />
+                      <span>Broadcast Alert Now</span>
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          </ModalPortal>
+        )}
+      </AnimatePresence>
+
       {/* Full Screen Dim Backdrop for open popups */}
       <AnimatePresence>
-        {(notificationsOpen || profileOpen) && (
+        {(notificationsOpen || profileOpen || quickActionsOpen) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -266,6 +365,7 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
             onClick={() => {
               setNotificationsOpen(false);
               setProfileOpen(false);
+              setQuickActionsOpen(false);
             }}
           />
         )}
@@ -273,10 +373,10 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
 
       {/* Top Header Bar */}
       <header className="shrink-0 h-16 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 transition-shadow">
-        <div className="max-w-[1720px] mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-3">
+        <div className="max-w-[1720px] mx-auto px-2.5 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
           
           {/* Left: Mobile Toggle & Brand Logo */}
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
@@ -285,26 +385,28 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
 
-            <NavLink to="/dashboard" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-md shadow-primary/20 group-hover:scale-105 transition-all duration-200">
-                <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  local_hospital
-                </span>
+            <NavLink to="/dashboard" className="flex items-center gap-2 sm:gap-3 group shrink-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary to-[#004e57] text-white flex items-center justify-center shadow-md shadow-primary/20 group-hover:scale-105 transition-all duration-200 shrink-0 border border-white/20">
+                {/* Healthcare Cross & Shield Emblem - Distinct Clinic Brand Logo */}
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L4 6v6c0 5.5 3.8 10.7 8 12 4.2-1.3 8-6.5 8-12V6l-8-4z" fill="rgba(255,255,255,0.18)"/>
+                  <path d="M12 7v8M8 11h8" stroke="white" strokeWidth="2.5"/>
+                </svg>
               </div>
-              <div className="hidden sm:block">
+              <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-base tracking-tight text-slate-900 leading-none">Smile Clinic</span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-primary/10 text-primary uppercase tracking-wide">
+                  <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 leading-none">Smile Clinic</span>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-extrabold bg-primary/10 text-primary uppercase tracking-wide border border-primary/20">
                     Admin
                   </span>
                 </div>
-                <span className="text-[11px] text-slate-500 font-medium">Hospital &amp; Clinical Management</span>
+                <span className="hidden sm:block text-[11px] text-slate-500 font-medium">Hospital &amp; Clinical Management</span>
               </div>
             </NavLink>
           </div>
 
           {/* Middle: Today's Date & Live 5s Sync Telemetry + Global Search */}
-          <div className="hidden md:flex items-center gap-3 flex-1 max-w-2xl mx-2 lg:mx-4">
+          <div className="hidden md:flex items-center gap-2.5 flex-1 max-w-2xl mx-2 lg:mx-4">
             {/* Today's Date Badge */}
             <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200/70 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 shrink-0 transition-colors shadow-2xs">
               <Calendar className="w-3.5 h-3.5 text-primary" />
@@ -337,6 +439,14 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
+                value={globalSearchTerm}
+                onChange={(e) => setGlobalSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && globalSearchTerm.trim()) {
+                    navigate(`/dashboard/patients?search=${encodeURIComponent(globalSearchTerm.trim())}`);
+                    showToast('info', 'Searching EHR Records', `Looking up "${globalSearchTerm.trim()}"`);
+                  }
+                }}
                 placeholder="Search patient MRN, doctor NPI, claim #, or lab order..."
                 className="w-full pl-9 pr-8 py-1.5 bg-slate-100 focus:bg-white rounded-xl text-xs text-slate-900 placeholder:text-slate-400 border border-transparent focus:border-primary/30 focus:shadow-sm focus:outline-none transition-all"
               />
@@ -346,9 +456,189 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
             </div>
           </div>
 
-          {/* Right Action Icons & Profile */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Power BI Button */}
+          {/* Right Action Icons: Essential Points (Export, Quick Actions, Power BI, Sync on mobile, Notifications, Profile) */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5">
+            {/* Live Sync Pill on Mobile (Small screens) */}
+            <div 
+              onClick={() => {
+                setIsSyncing(true);
+                setTimeout(() => setIsSyncing(false), 800);
+                showToast('success', 'Real-Time Sync Completed', 'Local clinical state synchronized with central HL7 node.');
+              }}
+              className="flex md:hidden items-center gap-1 px-2 py-1 bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200/70 rounded-xl text-[11px] font-semibold text-emerald-800 shrink-0 transition-all cursor-pointer shadow-2xs"
+              title="Real-Time HL7 Live Sync (Auto-syncs every 5s)"
+            >
+              <span className="relative flex h-1.5 w-1.5">
+                <span className={`absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 ${isSyncing ? 'animate-ping' : ''}`} />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+              </span>
+              <RotateCw className={`w-3 h-3 text-emerald-600 transition-transform ${isSyncing ? 'animate-spin' : ''}`} />
+              <span className="font-mono text-[10px]">{syncCountdown}s</span>
+            </div>
+
+            {/* Quick Actions Hub (+) Button with Rich Dropdown */}
+            <div className="relative" ref={quickActionsRef}>
+              <button
+                onClick={() => {
+                  setQuickActionsOpen(!quickActionsOpen);
+                  if (notificationsOpen) setNotificationsOpen(false);
+                  if (profileOpen) setProfileOpen(false);
+                }}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95 ${
+                  quickActionsOpen
+                    ? 'bg-primary text-white shadow-md shadow-primary/25'
+                    : 'bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20'
+                }`}
+                title="Executive Quick Actions & Essential Points"
+                aria-expanded={quickActionsOpen}
+              >
+                <Plus className={`w-4 h-4 transition-transform duration-200 ${quickActionsOpen ? 'rotate-45' : ''}`} />
+                <span className="hidden xs:inline sm:inline">Actions</span>
+              </button>
+
+              {/* Quick Actions Dropdown Menu */}
+              <AnimatePresence>
+                {quickActionsOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40 bg-slate-900/10 cursor-default" 
+                      onClick={() => setQuickActionsOpen(false)} 
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                      className="fixed sm:absolute inset-x-3 sm:inset-x-auto right-3 sm:right-0 top-16 sm:top-auto sm:mt-2.5 max-w-[calc(100vw-1.5rem)] sm:w-80 bg-white rounded-2xl shadow-2xl shadow-slate-900/20 border border-slate-200/90 py-2.5 z-50 ring-1 ring-black/5"
+                    >
+                      <div className="px-3.5 pb-2 mb-1 border-b border-slate-100 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                            Quick Operations Hub
+                          </span>
+                          <span className="text-xs font-extrabold text-slate-900">
+                            Essential Clinic Actions
+                          </span>
+                        </div>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-primary/10 text-primary uppercase">
+                          Executive
+                        </span>
+                      </div>
+
+                      <div className="py-1 space-y-0.5">
+                        <button
+                          onClick={() => {
+                            setQuickActionsOpen(false);
+                            setExportOpen(true);
+                          }}
+                          className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-primary/5 hover:text-primary flex items-center gap-2.5 transition-colors group"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <Download className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="block font-bold text-slate-900 group-hover:text-primary truncate">Export Clinical Reports</span>
+                            <span className="block text-[10px] text-slate-400 truncate">PDF, Excel, PBIX, or CSV datasets</span>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setQuickActionsOpen(false);
+                            setPowerBiOpen(true);
+                          }}
+                          className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-amber-500/10 hover:text-amber-800 flex items-center gap-2.5 transition-colors group"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <BarChart3 className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="block font-bold text-slate-900 group-hover:text-amber-700 truncate">Power BI Telemetry</span>
+                            <span className="block text-[10px] text-slate-400 truncate">Azure Healthcare Fabric metrics</span>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setQuickActionsOpen(false);
+                            navigate('/dashboard/doctors?add=true');
+                          }}
+                          className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2.5 transition-colors group"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <UserPlus className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="block font-bold text-slate-900 group-hover:text-indigo-700 truncate">Add New Doctor / Surgeon</span>
+                            <span className="block text-[10px] text-slate-400 truncate">Register NPI, specialty &amp; OR assignment</span>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setQuickActionsOpen(false);
+                            navigate('/dashboard/patients');
+                          }}
+                          className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-sky-50 hover:text-sky-700 flex items-center gap-2.5 transition-colors group"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <Users className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="block font-bold text-slate-900 group-hover:text-sky-700 truncate">Patient EHR Registry</span>
+                            <span className="block text-[10px] text-slate-400 truncate">Search MRN &amp; patient records</span>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setQuickActionsOpen(false);
+                            navigate('/dashboard/laboratory');
+                          }}
+                          className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2.5 transition-colors group"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <FlaskConical className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="block font-bold text-slate-900 group-hover:text-purple-700 truncate">Order Lab Diagnostics</span>
+                            <span className="block text-[10px] text-slate-400 truncate">CBCT scans, biopsy &amp; pathology</span>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setQuickActionsOpen(false);
+                            setBroadcastModalOpen(true);
+                          }}
+                          className="w-full px-3.5 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors group"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <Radio className="w-3.5 h-3.5 animate-pulse" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="block font-bold text-red-600 truncate">Emergency Broadcast Alert</span>
+                            <span className="block text-[10px] text-red-400 truncate">Instant Code Blue / Critical Notice</span>
+                          </div>
+                        </button>
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Direct Export Reports Button - Accessible on Phone, Tablet & Desktop! */}
+            <button
+              onClick={() => setExportOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-all active:scale-95 border border-slate-200/60 shadow-2xs"
+              title="Export Clinical Reports (PDF, Excel, PBIX, CSV)"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-600" />
+              <span className="hidden xs:inline sm:inline">Export</span>
+            </button>
+
+            {/* Direct Power BI Button */}
             <button
               onClick={() => setPowerBiOpen(true)}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 font-semibold rounded-xl text-xs border border-amber-500/20 transition-all shadow-xs active:scale-95"
@@ -356,15 +646,6 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
             >
               <BarChart3 className="w-3.5 h-3.5 text-amber-600" />
               <span>Power BI</span>
-            </button>
-
-            {/* Export Reports Button */}
-            <button
-              onClick={() => setExportOpen(true)}
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-all active:scale-95"
-            >
-              <Download className="w-3.5 h-3.5 text-slate-500" />
-              <span>Export</span>
             </button>
 
             {/* Notifications Menu with Popover */}
@@ -794,12 +1075,15 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
               >
                 <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center font-bold">
-                      <span className="material-symbols-outlined text-xl">local_hospital</span>
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-[#004e57] text-white flex items-center justify-center font-bold shadow-md shadow-primary/20">
+                      <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 2L4 6v6c0 5.5 3.8 10.7 8 12 4.2-1.3 8-6.5 8-12V6l-8-4z" fill="rgba(255,255,255,0.18)"/>
+                        <path d="M12 7v8M8 11h8" stroke="white" strokeWidth="2.5"/>
+                      </svg>
                     </div>
                     <div>
-                      <span className="font-bold text-sm block text-slate-900">Smile Clinic</span>
-                      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Admin Portal</span>
+                      <span className="font-extrabold text-sm block text-slate-900">Smile Clinic</span>
+                      <span className="text-[10px] text-teal-700 uppercase tracking-wider font-extrabold">Admin Portal</span>
                     </div>
                   </div>
                   <button
@@ -847,6 +1131,16 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
                   <button
                     onClick={() => {
                       setMobileMenuOpen(false);
+                      setExportOpen(true);
+                    }}
+                    className="w-full py-2 px-3 bg-teal-50 text-teal-900 rounded-xl text-xs font-semibold flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-4 h-4 text-teal-700" />
+                    <span>Export Clinical Reports</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
                       setPowerBiOpen(true);
                     }}
                     className="w-full py-2 px-3 bg-amber-50 text-amber-800 rounded-xl text-xs font-semibold flex items-center justify-center gap-2"
@@ -869,7 +1163,7 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
 
         {/* Inner Page Content - ONLY this area scrolls vertically! */}
         <main className="flex-1 p-3 sm:p-6 lg:p-8 max-w-full overflow-y-auto h-full">
-          <Outlet context={{ showToast, openPowerBi: () => setPowerBiOpen(true), openExport: () => setExportOpen(true) }} />
+          <Outlet context={{ showToast, openPowerBi: () => setPowerBiOpen(true), openExport: () => setExportOpen(true), openBroadcast: () => setBroadcastModalOpen(true) }} />
         </main>
       </div>
     </div>

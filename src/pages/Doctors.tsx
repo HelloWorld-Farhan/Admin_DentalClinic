@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -40,6 +40,14 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
   // Modals
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [newDoctorModalOpen, setNewDoctorModalOpen] = useState(false);
+
+  // Auto-open modal if launched from Quick Actions Hub (?add=true)
+  useEffect(() => {
+    if (window.location.search.includes('add=true')) {
+      setNewDoctorModalOpen(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   // Add Doctor form state (was missing — this caused the crash)
   const [newDoctorForm, setNewDoctorForm] = useState({

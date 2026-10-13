@@ -40,7 +40,7 @@ export default function ExportModal({ isOpen, onClose, reportTitle = 'Executive 
 
   const handleStartExport = () => {
     setIsExporting(true);
-    setProgress(15);
+    setProgress(20);
 
     const interval = setInterval(() => {
       setProgress((prev) => {
@@ -49,6 +49,56 @@ export default function ExportModal({ isOpen, onClose, reportTitle = 'Executive 
           setTimeout(() => {
             setIsExporting(false);
             setIsComplete(true);
+
+            // Generate and download real file dataset
+            try {
+              let mimeType = 'text/csv';
+              let extension = 'csv';
+              let content = '';
+              const todayStr = new Date().toISOString().slice(0, 10);
+
+              if (selectedFormat === 'csv') {
+                mimeType = 'text/csv;charset=utf-8;';
+                extension = 'csv';
+                content = `Record_ID,Patient_MRN,Provider_NPI,Department,Encounter_Date,Diagnosis_Code,Billing_Status,Amount\n` +
+                  `REC-901,MRN-884102,NPI-104928502,Maxillofacial Surgery,${todayStr},K08.1,Approved,$1850.00\n` +
+                  `REC-902,MRN-991204,NPI-192847104,Orthognathic & Craniofacial,${todayStr},M26.0,Pending,$4200.00\n` +
+                  `REC-903,MRN-773190,NPI-184920482,Endodontics Micro-Surgery,${todayStr},K04.0,Paid,$650.00\n` +
+                  `REC-904,MRN-662810,NPI-149204910,Pediatric Dentistry,${todayStr},K02.9,Approved,$420.00\n` +
+                  `REC-905,MRN-551029,NPI-194028471,Periodontics & Implants,${todayStr},K05.3,Paid,$2100.00`;
+              } else if (selectedFormat === 'excel') {
+                mimeType = 'application/vnd.ms-excel;charset=utf-8;';
+                extension = 'xls';
+                content = `<html><head><meta charset="UTF-8"></head><body><h2>Smile Clinic — Executive Operational Report</h2><p>Generated: ${new Date().toLocaleString()}</p><table border="1"><tr><th>Record ID</th><th>Patient MRN</th><th>Provider NPI</th><th>Department</th><th>Date</th><th>Status</th><th>Amount</th></tr><tr><td>REC-901</td><td>MRN-884102</td><td>NPI-104928502</td><td>Maxillofacial Surgery</td><td>${todayStr}</td><td>Approved</td><td>$1,850.00</td></tr><tr><td>REC-902</td><td>MRN-991204</td><td>NPI-192847104</td><td>Orthognathic & Craniofacial</td><td>${todayStr}</td><td>Pending</td><td>$4,200.00</td></tr><tr><td>REC-903</td><td>MRN-773190</td><td>NPI-184920482</td><td>Endodontics Micro-Surgery</td><td>${todayStr}</td><td>Paid</td><td>$650.00</td></tr></table></body></html>`;
+              } else if (selectedFormat === 'pbix') {
+                mimeType = 'application/json;charset=utf-8;';
+                extension = 'json';
+                content = JSON.stringify({
+                  model: 'SmileClinic_DirectQuery_AzureFabric',
+                  version: '3.4.1',
+                  exportedAt: new Date().toISOString(),
+                  metrics: { activePatients: 14820, orUtilization: '92.4%', billingEfficiency: '94.2%', uptime: '99.98%' },
+                  schema: ['Patients', 'Doctors', 'OR_Suites', 'Lab_Orders', 'Financial_Claims']
+                }, null, 2);
+              } else {
+                mimeType = 'text/plain;charset=utf-8;';
+                extension = 'txt';
+                content = `========================================================\nSMILE CLINIC — EXECUTIVE CLINICAL & OPERATIONAL REPORT\n========================================================\nExport Date: ${new Date().toLocaleString()}\nEnvironment: Smile Clinic Hospital Executive Portal\n\n1. EXECUTIVE SUMMARY\n- Total Registered EHR Patients: 14,820\n- Operating Suites Active: 6 Suites (92.4% Utilization)\n- Lab Diagnostic Orders Today: 289 (94.8% SLA Adherence)\n- Revenue Cycle Collection Rate: 94.2%\n\n2. ACTIVE SURGICAL DIRECTORS\n- Dr. Marcus Vance, MD (Chief OMS) - OR-1 / Suite A\n- Dr. Elena Rostova, MD (Orthognathic) - OR-2 / Suite B\n- Dr. Aisha Patel, DDS (Endodontics) - Operatory 3\n- Dr. Julian Hayes, DDS (Pediatric) - Operatory 4\n- Dr. Sarah Lin, DDS (Periodontics) - Operatory 5\n\nHL7 FHIR R4 Compliant • HIPAA Encrypted • Verified\n========================================================`;
+              }
+
+              const blob = new Blob([content], { type: mimeType });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `SmileClinic_${selectedFormat.toUpperCase()}_Report_${todayStr}.${extension}`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+            } catch (err) {
+              console.error('Export download error:', err);
+            }
+
             setTimeout(() => {
               setIsComplete(false);
               onClose();
@@ -58,7 +108,7 @@ export default function ExportModal({ isOpen, onClose, reportTitle = 'Executive 
         }
         return prev + 25;
       });
-    }, 250);
+    }, 220);
   };
 
   return (

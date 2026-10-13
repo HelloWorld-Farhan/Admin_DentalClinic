@@ -25,11 +25,11 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onNotify }) => {
 
   // Steps: 1 (Email & Consent), 2 (6-digit OTP), 3 (Two-time password input)
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [email, setEmail] = useState('dr.sneha.lal@smileclinic.com');
-  const [authorizedConsent, setAuthorizedConsent] = useState(true);
+  const [email, setEmail] = useState(() => sessionStorage.getItem('admin_email') || '');
+  const [authorizedConsent, setAuthorizedConsent] = useState(false);
 
   // OTP State
-  const [otp, setOtp] = useState(['4', '8', '2', '9', '1', '0']);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [otpError, setOtpError] = useState('');
   const [resendTimer, setResendTimer] = useState(45);
   const [canResend, setCanResend] = useState(false);
