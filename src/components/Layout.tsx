@@ -23,12 +23,15 @@ import {
   Trash2,
   Check,
   Calendar,
-  RotateCw
+  RotateCw,
+  UserCheck,
+  KeyRound
 } from 'lucide-react';
 import { mockNotifications } from '../data/mockData';
 import { NotificationItem } from '../types';
 import PowerBIModal from './PowerBIModal';
 import ExportModal from './ExportModal';
+import ProfileSettingsModal, { UserProfileData } from './ProfileSettingsModal';
 import ToastNotification, { ToastMessage } from './ToastNotification';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
@@ -38,9 +41,25 @@ export default function Layout() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [powerBiOpen, setPowerBiOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [profileModalTab, setProfileModalTab] = useState<'details' | 'security' | 'powerbi'>('details');
+
+  // Administrator Profile State
+  const [userProfile, setUserProfile] = useState<UserProfileData>({
+    name: 'Dr. Sarah Sterling',
+    role: 'Chief Hospital Admin',
+    npi: 'NPI-88492019',
+    license: 'CA-MED-994821',
+    department: 'Hospital Administration & Surgical Directorate',
+    email: 's.sterling@smileclinic.com',
+    phone: '+1 (555) 942-8810',
+    office: 'Tower A - Executive Wing, Suite 402',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=128&q=80',
+    bio: 'Board-certified Maxillofacial Surgeon specializing in hospital capacity optimization, robotic implant surgery, and enterprise HL7 integration.',
+  });
 
   // Lock background window scrolling whenever any popup, drawer, or modal is open
-  useBodyScrollLock(Boolean(mobileMenuOpen || notificationsOpen || profileOpen || powerBiOpen || exportOpen));
+  useBodyScrollLock(Boolean(mobileMenuOpen || notificationsOpen || profileOpen || powerBiOpen || exportOpen || profileModalOpen));
 
   // Today's Date and 5-second recurring live sync state
   const [currentDateFormatted] = useState(() => {
@@ -208,13 +227,25 @@ export default function Layout() {
   });
 
   return (
-    <div className="min-h-screen bg-[#f7fafc] text-slate-800 flex flex-col antialiased selection:bg-primary/20 selection:text-primary">
+    <div className="h-screen bg-[#f7fafc] text-slate-800 flex flex-col antialiased selection:bg-primary/20 selection:text-primary overflow-hidden">
       {/* Toast Notification Container */}
       <ToastNotification toasts={toasts} onDismiss={(id) => setToasts(t => t.filter(x => x.id !== id))} />
 
       {/* Global Modals */}
       <PowerBIModal isOpen={powerBiOpen} onClose={() => setPowerBiOpen(false)} />
       <ExportModal isOpen={exportOpen} onClose={() => setExportOpen(false)} />
+      <ProfileSettingsModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+        initialTab={profileModalTab}
+        userProfile={userProfile}
+        onSaveProfile={(updated) => {
+          setUserProfile(updated);
+          showToast('success', 'Profile Updated', `${updated.name}'s credentials saved successfully.`);
+        }}
+        onOpenPowerBI={() => setPowerBiOpen(true)}
+        showToast={showToast}
+      />
 
       {/* Full Screen Dim Backdrop for open popups */}
       <AnimatePresence>
@@ -234,7 +265,7 @@ export default function Layout() {
       </AnimatePresence>
 
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shrink-0 transition-shadow">
+      <header className="shrink-0 h-16 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 transition-shadow">
         <div className="max-w-[1720px] mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-3">
           
           {/* Left: Mobile Toggle & Brand Logo */}
@@ -525,15 +556,15 @@ export default function Layout() {
               >
                 <div className="relative">
                   <img
-                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=128&q=80"
-                    alt="Dr. Sarah Sterling"
+                    src={userProfile.avatar}
+                    alt={userProfile.name}
                     className="w-8 h-8 rounded-lg object-cover ring-2 ring-primary/30"
                   />
                   <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white" />
                 </div>
                 <div className="hidden sm:block text-left">
-                  <span className="text-xs font-bold text-slate-900 block leading-tight">Dr. Sarah Sterling</span>
-                  <span className="text-[10px] text-slate-500 font-medium block">Chief Hospital Admin</span>
+                  <span className="text-xs font-bold text-slate-900 block leading-tight">{userProfile.name}</span>
+                  <span className="text-[10px] text-slate-500 font-medium block">{userProfile.role}</span>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
               </button>
@@ -552,21 +583,39 @@ export default function Layout() {
                       transition={{ type: 'spring', stiffness: 400, damping: 28 }}
                       className="absolute right-0 mt-2.5 w-64 bg-white rounded-2xl shadow-2xl shadow-slate-900/15 border border-slate-200/90 py-2 z-50 ring-1 ring-black/5"
                     >
-                    <div className="px-4 py-3 border-b border-slate-100">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=128&q=80"
-                          alt="Dr. Sarah Sterling"
-                          className="w-10 h-10 rounded-xl object-cover ring-2 ring-primary/30"
-                        />
-                        <div>
-                          <span className="text-xs font-bold text-slate-900 block">Dr. Sarah Sterling</span>
-                          <span className="text-[11px] text-slate-500 block">NPI-88492019 • Chief Admin</span>
+                    <div className="p-3 border-b border-slate-100">
+                      <div 
+                        onClick={() => {
+                          setProfileOpen(false);
+                          setProfileModalTab('details');
+                          setProfileModalOpen(true);
+                        }}
+                        className="p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={userProfile.avatar}
+                            alt={userProfile.name}
+                            className="w-10 h-10 rounded-xl object-cover ring-2 ring-primary/30 group-hover:scale-105 transition-transform"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-xs font-bold text-slate-900 block truncate group-hover:text-primary transition-colors">
+                              {userProfile.name}
+                            </span>
+                            <span className="text-[11px] text-slate-500 block truncate">
+                              {userProfile.npi} • {userProfile.role}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="mt-2.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
-                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                        Executive Level 4 Access
+                        <div className="mt-2.5 flex items-center justify-between">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                            <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                            Executive Level 4 Access
+                          </span>
+                          <span className="text-[10px] font-bold text-primary group-hover:underline">
+                            Edit Profile &rarr;
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -574,12 +623,35 @@ export default function Layout() {
                       <button
                         onClick={() => {
                           setProfileOpen(false);
-                          setPowerBiOpen(true);
+                          setProfileModalTab('details');
+                          setProfileModalOpen(true);
                         }}
                         className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-primary flex items-center gap-2.5 transition-colors"
                       >
-                        <BarChart3 className="w-4 h-4 text-amber-500" />
-                        <span>Executive Power BI Suite</span>
+                        <UserCheck className="w-4 h-4 text-primary" />
+                        <span>Account &amp; Clinical Details</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setProfileOpen(false);
+                          setProfileModalTab('security');
+                          setProfileModalOpen(true);
+                        }}
+                        className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-primary flex items-center gap-2.5 transition-colors"
+                      >
+                        <KeyRound className="w-4 h-4 text-amber-500" />
+                        <span>Security &amp; Change Password</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setProfileOpen(false);
+                          setProfileModalTab('powerbi');
+                          setProfileModalOpen(true);
+                        }}
+                        className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-primary flex items-center gap-2.5 transition-colors"
+                      >
+                        <BarChart3 className="w-4 h-4 text-emerald-600" />
+                        <span>Executive Power BI Telemetry</span>
                       </button>
                       <button
                         onClick={() => {
@@ -621,10 +693,10 @@ export default function Layout() {
         </div>
       </header>
 
-      {/* Main Body with Sidebar + Animated Content */}
-      <div className="flex-1 flex max-w-[1720px] w-full mx-auto">
-        {/* Desktop Sidebar with LayoutId Spring Animation */}
-        <aside className="hidden lg:flex flex-col w-64 border-r border-slate-200/80 bg-white/70 backdrop-blur-md shrink-0 py-6 px-4">
+      {/* Main Body with Fixed Left Sidebar + Scrollable Inner Content */}
+      <div className="flex-1 flex max-w-[1720px] w-full mx-auto overflow-hidden">
+        {/* Desktop Sidebar with LayoutId Spring Animation - Stays Fixed on Screen! */}
+        <aside className="hidden lg:flex flex-col w-64 border-r border-slate-200/80 bg-white/80 backdrop-blur-md shrink-0 py-6 px-4 h-full overflow-y-auto">
           <div className="space-y-1.5 flex-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-2 block">
               Core Hospital Operations
@@ -786,8 +858,8 @@ export default function Layout() {
           )}
         </AnimatePresence>
 
-        {/* Content Outlet with Direct Responsive Mounting */}
-        <main className="flex-1 p-3 sm:p-6 lg:p-8 max-w-full overflow-x-hidden">
+        {/* Inner Page Content - ONLY this area scrolls vertically! */}
+        <main className="flex-1 p-3 sm:p-6 lg:p-8 max-w-full overflow-y-auto h-full">
           <Outlet context={{ showToast, openPowerBi: () => setPowerBiOpen(true), openExport: () => setExportOpen(true) }} />
         </main>
       </div>
