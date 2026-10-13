@@ -1,23 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Stethoscope, 
   Search, 
-  Filter, 
   Calendar, 
-  Clock, 
   UserPlus, 
   Star, 
   Phone, 
   Mail, 
-  CheckCircle2, 
-  ChevronRight, 
   X, 
   Activity, 
   ShieldCheck, 
-  Sparkles,
-  RotateCcw
+  RotateCcw,
+  Upload,
+  Camera,
+  User
 } from 'lucide-react';
 import { mockDoctors, mockORSuites } from '../data/mockData';
 import { Doctor } from '../types';
@@ -42,6 +40,35 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
   // Modals
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [newDoctorModalOpen, setNewDoctorModalOpen] = useState(false);
+
+  // Add Doctor form state (was missing — this caused the crash)
+  const [newDoctorForm, setNewDoctorForm] = useState({
+    name: '',
+    specialty: 'Oral & Maxillofacial Surgery',
+    room: '',
+    npi: '',
+    shift: '',
+    phone: '',
+    email: '',
+    photoPreview: '' as string,
+  });
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewDoctorForm((prev) => ({ ...prev, photoPreview: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const resetDoctorForm = () => {
+    setNewDoctorForm({ name: '', specialty: 'Oral & Maxillofacial Surgery', room: '', npi: '', shift: '', phone: '', email: '', photoPreview: '' });
+    if (photoInputRef.current) photoInputRef.current.value = '';
+  };
 
   // Freeze background window scrolling when ANY popup or modal is open
   const isAnyModalOpen = Boolean(scheduleModalOpen || newDoctorModalOpen || selectedDoctor);
@@ -95,20 +122,21 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
       title: 'Attending Clinical Practitioner',
       specialty: newDoctorForm.specialty,
       npi: newDoctorForm.npi || `NPI-${Math.floor(100000000 + Math.random() * 900000000)}`,
-      room: newDoctorForm.room,
+      room: newDoctorForm.room || 'Operatory 1',
       status: 'On Duty',
       activePatients: 0,
-      shift: newDoctorForm.shift,
+      shift: newDoctorForm.shift || '08:00 – 16:00',
       surgeriesToday: 0,
       rating: 5.0,
       phone: newDoctorForm.phone || '+1 (555) 000-1122',
       email: newDoctorForm.email || 'practitioner@smileclinic.com',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+      avatar: newDoctorForm.photoPreview || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
       experience: 'Board Eligible Practitioner',
     };
     setDoctorsList([newDoc, ...doctorsList]);
     setNewDoctorModalOpen(false);
-    showToast('success', 'Practitioner Registered', `${newDoc.name} added to institutional roster`);
+    resetDoctorForm();
+    showToast('success', 'Doctor Added', `${newDoc.name} has been added to the roster`);
   };
 
   const handleScheduleSurgery = (e: React.FormEvent) => {
@@ -149,7 +177,7 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
             className="px-4 py-2 bg-primary hover:bg-primary-container text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-md transition-all"
           >
             <UserPlus className="w-4 h-4" />
-            <span>Add Practitioner</span>
+            <span>Add Doctor</span>
           </button>
         </div>
       </div>
@@ -548,113 +576,199 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
         )}
       </AnimatePresence>
 
-      {/* New Doctor Modal */}
+      {/* Add Doctor Modal — mobile-optimized */}
       <AnimatePresence>
         {newDoctorModalOpen && (
           <ModalPortal>
-            <div 
-              onClick={() => setNewDoctorModalOpen(false)}
-              className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm"
+            {/* Backdrop */}
+            <div
+              onClick={() => { setNewDoctorModalOpen(false); resetDoctorForm(); }}
+              className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center bg-slate-950/70 backdrop-blur-sm"
             >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200"
-            >
-              <div className="p-5 bg-gradient-to-r from-primary to-primary-container text-white flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <UserPlus className="w-5 h-5 text-white" />
-                  <h3 className="font-bold text-base">Register Clinical Practitioner</h3>
-                </div>
-                <button onClick={() => setNewDoctorModalOpen(false)} className="text-white/80 hover:text-white">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateDoctor} className="p-5 space-y-3.5 text-xs">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Full Practitioner Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Dr. Katherine Bell, DDS"
-                    value={newDoctorForm.name}
-                    onChange={(e) => setNewDoctorForm({ ...newDoctorForm, name: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-primary focus:outline-none"
-                  />
+              {/* Modal panel */}
+              <motion.div
+                initial={{ opacity: 0, y: 60, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 40, scale: 0.97 }}
+                transition={{ duration: 0.28, ease: 'easeOut' }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh]"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-primary to-primary-container text-white shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                      <UserPlus className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm leading-tight">Add New Doctor</h3>
+                      <p className="text-[11px] text-white/75">Register to clinic roster</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { setNewDoctorModalOpen(false); resetDoctorForm(); }}
+                    className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
+                  >
+                    <X className="w-4 h-4 text-white" />
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Specialty</label>
-                    <select
-                      value={newDoctorForm.specialty}
-                      onChange={(e) => setNewDoctorForm({ ...newDoctorForm, specialty: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-primary"
+                {/* Scrollable form body */}
+                <form onSubmit={handleCreateDoctor} className="flex flex-col flex-1 overflow-hidden">
+                  <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+
+                    {/* Photo Upload */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Profile Photo</label>
+                      <div className="flex items-center gap-4">
+                        {/* Preview or placeholder */}
+                        <div className="w-16 h-16 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0 relative">
+                          {newDoctorForm.photoPreview ? (
+                            <img src={newDoctorForm.photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <User className="w-7 h-7 text-slate-400" />
+                          )}
+                        </div>
+                        {/* Upload button */}
+                        <div className="flex flex-col gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => photoInputRef.current?.click()}
+                            className="inline-flex items-center gap-2 px-3.5 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold rounded-xl border border-primary/20 transition-colors"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            Upload Photo
+                          </button>
+                          <p className="text-[10px] text-slate-400">JPG, PNG or GIF · Max 5 MB</p>
+                          <input
+                            ref={photoInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handlePhotoChange}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Full Name */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Full Name *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Dr. Katherine Bell, DDS"
+                        value={newDoctorForm.name}
+                        onChange={(e) => setNewDoctorForm({ ...newDoctorForm, name: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-primary focus:border-primary focus:bg-white focus:outline-none transition-all"
+                      />
+                    </div>
+
+                    {/* Specialty */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Specialty *</label>
+                      <select
+                        value={newDoctorForm.specialty}
+                        onChange={(e) => setNewDoctorForm({ ...newDoctorForm, specialty: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 focus:ring-2 focus:ring-primary focus:border-primary focus:bg-white focus:outline-none transition-all"
+                      >
+                        <option>Oral &amp; Maxillofacial Surgery</option>
+                        <option>Endodontics &amp; Micro-Surgery</option>
+                        <option>Orthodontics</option>
+                        <option>Pediatric Dentistry</option>
+                        <option>Periodontics &amp; Implants</option>
+                        <option>Restorative &amp; Prosthodontics</option>
+                        <option>General Dentistry</option>
+                      </select>
+                    </div>
+
+                    {/* Email & Phone */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Email</label>
+                        <div className="relative">
+                          <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <input
+                            type="email"
+                            placeholder="doctor@smileclinic.com"
+                            value={newDoctorForm.email}
+                            onChange={(e) => setNewDoctorForm({ ...newDoctorForm, email: e.target.value })}
+                            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-primary focus:border-primary focus:bg-white focus:outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Phone</label>
+                        <div className="relative">
+                          <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <input
+                            type="tel"
+                            placeholder="+1 (555) 000-1234"
+                            value={newDoctorForm.phone}
+                            onChange={(e) => setNewDoctorForm({ ...newDoctorForm, phone: e.target.value })}
+                            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-primary focus:border-primary focus:bg-white focus:outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Room & Shift */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Assigned Room</label>
+                        <input
+                          type="text"
+                          placeholder="Operatory 6"
+                          value={newDoctorForm.room}
+                          onChange={(e) => setNewDoctorForm({ ...newDoctorForm, room: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-primary focus:border-primary focus:bg-white focus:outline-none transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Shift Hours</label>
+                        <input
+                          type="text"
+                          placeholder="08:00 – 16:30"
+                          value={newDoctorForm.shift}
+                          onChange={(e) => setNewDoctorForm({ ...newDoctorForm, shift: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-primary focus:border-primary focus:bg-white focus:outline-none transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    {/* NPI Number */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">NPI Number</label>
+                      <input
+                        type="text"
+                        placeholder="NPI-10492850 (auto-generated if blank)"
+                        value={newDoctorForm.npi}
+                        onChange={(e) => setNewDoctorForm({ ...newDoctorForm, npi: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-primary focus:border-primary focus:bg-white focus:outline-none transition-all"
+                      />
+                    </div>
+
+                  </div>
+
+                  {/* Sticky footer actions */}
+                  <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => { setNewDoctorModalOpen(false); resetDoctorForm(); }}
+                      className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-100 transition-colors"
                     >
-                      <option>Oral &amp; Maxillofacial Surgery</option>
-                      <option>Endodontics &amp; Micro-Surgery</option>
-                      <option>Orthodontics</option>
-                      <option>Pediatric Dentistry</option>
-                      <option>Periodontics &amp; Implants</option>
-                      <option>Restorative &amp; Prosthodontics</option>
-                    </select>
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary-container text-white text-sm font-bold shadow-md shadow-primary/25 transition-all"
+                    >
+                      Add Doctor
+                    </button>
                   </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Assigned Room</label>
-                    <input
-                      type="text"
-                      placeholder="Operatory 6"
-                      value={newDoctorForm.room}
-                      onChange={(e) => setNewDoctorForm({ ...newDoctorForm, room: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">NPI Number</label>
-                    <input
-                      type="text"
-                      placeholder="NPI-10492850"
-                      value={newDoctorForm.npi}
-                      onChange={(e) => setNewDoctorForm({ ...newDoctorForm, npi: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Shift Hours</label>
-                    <input
-                      type="text"
-                      placeholder="08:00 – 16:30"
-                      value={newDoctorForm.shift}
-                      onChange={(e) => setNewDoctorForm({ ...newDoctorForm, shift: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setNewDoctorModalOpen(false)}
-                    className="px-4 py-2 text-slate-600 font-semibold"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-primary hover:bg-primary-container text-white font-semibold rounded-xl shadow-md"
-                  >
-                    Enroll Doctor
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
+                </form>
+              </motion.div>
+            </div>
           </ModalPortal>
         )}
       </AnimatePresence>
