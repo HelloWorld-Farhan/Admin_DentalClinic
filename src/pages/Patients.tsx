@@ -575,7 +575,7 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
         {/* Main Table Container */}
         <div className="w-full bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full min-w-[820px] text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-semibold border-b border-slate-100">
                   <th className="py-3.5 px-4">MRN &amp; Demographics</th>

@@ -394,13 +394,13 @@ export default function Layout() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.96 }}
                       transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                      className="absolute right-0 mt-2.5 w-[340px] sm:w-[420px] bg-white rounded-2xl shadow-2xl shadow-slate-900/15 border border-slate-200/90 overflow-hidden z-50 ring-1 ring-black/5"
+                      className="fixed sm:absolute inset-x-2.5 sm:inset-x-auto right-2.5 sm:right-0 top-16 sm:top-auto sm:mt-2.5 max-w-[calc(100vw-1.25rem)] sm:w-[420px] bg-white rounded-2xl shadow-2xl shadow-slate-900/20 border border-slate-200/90 overflow-hidden z-50 ring-1 ring-black/5 flex flex-col max-h-[85vh]"
                     >
                     {/* Popover Header */}
-                    <div className="p-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+                    <div className="p-3.5 sm:p-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white shrink-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-amber-400/20 flex items-center justify-center">
+                          <div className="w-7 h-7 rounded-lg bg-amber-400/20 flex items-center justify-center shrink-0">
                             <BellRing className="w-4 h-4 text-amber-300" />
                           </div>
                           <div>
@@ -424,34 +424,36 @@ export default function Layout() {
                       </div>
 
                       {/* Filter Chips */}
-                      <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-slate-700/60">
-                        {(['all', 'critical', 'financial', 'triage'] as const).map((tab) => (
-                          <button
-                            key={tab}
-                            onClick={() => setNotificationFilter(tab)}
-                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold capitalize transition-all ${
-                              notificationFilter === tab
-                                ? 'bg-white text-slate-900 shadow-xs'
-                                : 'text-slate-300 hover:text-white hover:bg-white/10'
-                            }`}
-                          >
-                            {tab}
-                          </button>
-                        ))}
+                      <div className="flex items-center justify-between gap-1 mt-2.5 pt-2.5 border-t border-slate-700/60 overflow-x-auto pb-0.5">
+                        <div className="flex items-center gap-1 shrink-0">
+                          {(['all', 'critical', 'financial', 'triage'] as const).map((tab) => (
+                            <button
+                              key={tab}
+                              onClick={() => setNotificationFilter(tab)}
+                              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[10px] font-bold capitalize transition-all shrink-0 ${
+                                notificationFilter === tab
+                                  ? 'bg-white text-slate-900 shadow-xs'
+                                  : 'text-slate-300 hover:text-white hover:bg-white/10'
+                              }`}
+                            >
+                              {tab}
+                            </button>
+                          ))}
+                        </div>
                         {unreadCount > 0 && (
                           <button
                             onClick={markAllNotificationsRead}
-                            className="ml-auto text-[10px] text-sky-300 hover:text-white transition-colors flex items-center gap-1 font-semibold"
+                            className="text-[10px] text-sky-300 hover:text-white transition-colors flex items-center gap-1 font-semibold shrink-0"
                           >
                             <Check className="w-3 h-3" />
-                            Mark read
+                            <span>Mark read</span>
                           </button>
                         )}
                       </div>
                     </div>
 
                     {/* Notification List */}
-                    <div className="max-h-[340px] overflow-y-auto divide-y divide-slate-100">
+                    <div className="max-h-[50vh] sm:max-h-[340px] overflow-y-auto divide-y divide-slate-100 flex-1">
                       {filteredNotifications.length === 0 ? (
                         <div className="p-8 text-center text-slate-400">
                           <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-400 mb-2 opacity-80" />
@@ -581,7 +583,7 @@ export default function Layout() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.96 }}
                       transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                      className="absolute right-0 mt-2.5 w-64 bg-white rounded-2xl shadow-2xl shadow-slate-900/15 border border-slate-200/90 py-2 z-50 ring-1 ring-black/5"
+                      className="fixed sm:absolute inset-x-3 sm:inset-x-auto right-3 sm:right-0 top-16 sm:top-auto sm:mt-2.5 max-w-[calc(100vw-1.5rem)] sm:w-72 bg-white rounded-2xl shadow-2xl shadow-slate-900/20 border border-slate-200/90 py-2 z-50 ring-1 ring-black/5 max-h-[85vh] overflow-y-auto"
                     >
                     <div className="p-3 border-b border-slate-100">
                       <div 

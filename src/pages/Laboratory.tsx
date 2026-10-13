@@ -499,7 +499,7 @@ export const Laboratory: React.FC<LaboratoryProps> = ({ onNotify, onOpenPowerBI,
               placeholder="Filter specimen or test..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#005c65] w-64"
+              className="w-full sm:w-64 pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#005c65]"
             />
           </div>
         </div>

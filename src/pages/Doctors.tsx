@@ -336,7 +336,7 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
       {/* Doctor Directory Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+          <table className="w-full min-w-[800px] text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold border-b border-slate-200 dark:border-slate-800">
                 <th className="py-3 px-4">Practitioner &amp; NPI</th>

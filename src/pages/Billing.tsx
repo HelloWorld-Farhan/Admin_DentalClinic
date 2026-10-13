@@ -611,7 +611,7 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
 
         {/* Ledger Table Element */}
         <div className="overflow-x-auto w-full">
-          <table className="w-full text-left text-xs">
+          <table className="w-full min-w-[760px] text-left text-xs">
             <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
               <tr>
                 <th className="py-3 px-4">Claim &amp; MRN</th>

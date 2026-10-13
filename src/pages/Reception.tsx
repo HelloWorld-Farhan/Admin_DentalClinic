@@ -609,7 +609,7 @@ export const Reception: React.FC<ReceptionProps> = ({ onNotify, onOpenPowerBI, o
 
             {/* Live Queue List Table */}
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full min-w-[760px] text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-semibold border-b border-slate-100">
                     <th className="py-2.5 px-3">Token &amp; Time</th>
