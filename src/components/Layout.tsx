@@ -373,10 +373,10 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
 
       {/* Top Header Bar */}
       <header className="shrink-0 h-16 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 transition-shadow">
-        <div className="max-w-[1720px] mx-auto px-2.5 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
+        <div className="max-w-[1720px] mx-auto px-2.5 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-3">
           
-          {/* Left: Mobile Toggle & Brand Logo */}
-          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          {/* Left: Mobile Toggle & Brand Logo Emblem Only (No Name text) */}
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
@@ -385,58 +385,21 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
 
-            <NavLink to="/dashboard" className="flex items-center gap-2 sm:gap-3 group shrink-0">
+            <NavLink to="/dashboard" className="flex items-center group shrink-0" title="Smile Clinic Home">
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary to-[#004e57] text-white flex items-center justify-center shadow-md shadow-primary/20 group-hover:scale-105 transition-all duration-200 shrink-0 border border-white/20">
-                {/* Healthcare Cross & Shield Emblem - Distinct Clinic Brand Logo */}
+                {/* Healthcare Cross & Shield Emblem */}
                 <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 2L4 6v6c0 5.5 3.8 10.7 8 12 4.2-1.3 8-6.5 8-12V6l-8-4z" fill="rgba(255,255,255,0.18)"/>
                   <path d="M12 7v8M8 11h8" stroke="white" strokeWidth="2.5"/>
                 </svg>
               </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 leading-none">Smile Clinic</span>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-extrabold bg-primary/10 text-primary uppercase tracking-wide border border-primary/20">
-                    Admin
-                  </span>
-                </div>
-                <span className="hidden sm:block text-[11px] text-slate-500 font-medium">Hospital &amp; Clinical Management</span>
-              </div>
             </NavLink>
           </div>
 
-          {/* Middle: Today's Date & Live 5s Sync Telemetry + Global Search */}
-          <div className="hidden md:flex items-center gap-2.5 flex-1 max-w-2xl mx-2 lg:mx-4">
-            {/* Today's Date Badge */}
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200/70 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 shrink-0 transition-colors shadow-2xs">
-              <Calendar className="w-3.5 h-3.5 text-primary" />
-              <span>{currentDateFormatted}</span>
-            </div>
-
-            {/* Live 5-Second Sync Indicator */}
-            <div 
-              onClick={() => {
-                setIsSyncing(true);
-                setTimeout(() => setIsSyncing(false), 800);
-                showToast('success', 'Real-Time Sync Completed', 'Local clinical state synchronized with central HL7 node.');
-              }}
-              className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200/70 rounded-xl text-xs font-semibold text-emerald-800 shrink-0 transition-all cursor-pointer shadow-2xs group"
-              title="Click to force immediate synchronization (Auto-syncs every 5s)"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className={`absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 ${isSyncing ? 'animate-ping' : ''}`} />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              <RotateCw className={`w-3.5 h-3.5 text-emerald-600 transition-transform ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180'}`} />
-              <span className="font-bold">Live Sync</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-200/60 text-emerald-900 font-mono">
-                {isSyncing ? 'Syncing...' : `${syncCountdown}s`}
-              </span>
-            </div>
-
-            {/* Global Search Bar */}
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          {/* Center: Search Bar (Responsive on Mobile & Desktop) */}
+          <div className="flex-1 max-w-xl mx-1.5 sm:mx-4">
+            <div className="relative w-full">
+              <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={globalSearchTerm}
@@ -444,419 +407,70 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && globalSearchTerm.trim()) {
                     navigate(`/dashboard/patients?search=${encodeURIComponent(globalSearchTerm.trim())}`);
-                    showToast('info', 'Searching EHR Records', `Looking up "${globalSearchTerm.trim()}"`);
+                    showToast('info', 'Searching Records', `Looking up "${globalSearchTerm.trim()}"`);
                   }
                 }}
-                placeholder="Search patient MRN, doctor NPI, claim #, or lab order..."
-                className="w-full pl-9 pr-8 py-1.5 bg-slate-100 focus:bg-white rounded-xl text-xs text-slate-900 placeholder:text-slate-400 border border-transparent focus:border-primary/30 focus:shadow-sm focus:outline-none transition-all"
+                placeholder="Search patient, doctor, order..."
+                className="w-full pl-8 sm:pl-9 pr-3 sm:pr-8 py-1.5 bg-slate-100 hover:bg-slate-200/60 focus:bg-white rounded-xl text-xs text-slate-900 placeholder:text-slate-400 border border-transparent focus:border-primary/30 focus:shadow-sm focus:outline-none transition-all"
               />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-2xs">
+              <span className="hidden sm:inline-block absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-2xs">
                 ⌘K
               </span>
             </div>
           </div>
 
-          {/* Right Action Icons: Essential Points (Export, Quick Actions, Power BI, Sync on mobile, Notifications, Profile) */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5">
-            {/* Live Sync Pill on Mobile (Small screens) */}
+          {/* Right: Live Sync + Profile Picture & Name */}
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Live 5-Second Sync Indicator */}
             <div 
               onClick={() => {
                 setIsSyncing(true);
                 setTimeout(() => setIsSyncing(false), 800);
                 showToast('success', 'Real-Time Sync Completed', 'Local clinical state synchronized with central HL7 node.');
               }}
-              className="flex md:hidden items-center gap-1 px-2 py-1 bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200/70 rounded-xl text-[11px] font-semibold text-emerald-800 shrink-0 transition-all cursor-pointer shadow-2xs"
-              title="Real-Time HL7 Live Sync (Auto-syncs every 5s)"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200/70 rounded-xl text-[11px] sm:text-xs font-semibold text-emerald-800 shrink-0 transition-all cursor-pointer shadow-2xs group"
+              title="Click to force immediate synchronization (Auto-syncs every 5s)"
             >
-              <span className="relative flex h-1.5 w-1.5">
+              <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2">
                 <span className={`absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 ${isSyncing ? 'animate-ping' : ''}`} />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-emerald-500" />
               </span>
-              <RotateCw className={`w-3 h-3 text-emerald-600 transition-transform ${isSyncing ? 'animate-spin' : ''}`} />
-              <span className="font-mono text-[10px]">{syncCountdown}s</span>
+              <RotateCw className={`w-3.5 h-3.5 text-emerald-600 transition-transform ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180'}`} />
+              <span className="font-bold hidden xs:inline">Sync</span>
+              <span className="text-[10px] px-1 sm:px-1.5 py-0.5 rounded-md bg-emerald-200/60 text-emerald-900 font-mono">
+                {syncCountdown}s
+              </span>
             </div>
 
-            {/* Quick Actions Hub (+) Button with Rich Dropdown */}
-            <div className="relative" ref={quickActionsRef}>
-              <button
-                onClick={() => {
-                  setQuickActionsOpen(!quickActionsOpen);
-                  if (notificationsOpen) setNotificationsOpen(false);
-                  if (profileOpen) setProfileOpen(false);
-                }}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95 ${
-                  quickActionsOpen
-                    ? 'bg-primary text-white shadow-md shadow-primary/25'
-                    : 'bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20'
-                }`}
-                title="Executive Quick Actions & Essential Points"
-                aria-expanded={quickActionsOpen}
-              >
-                <Plus className={`w-4 h-4 transition-transform duration-200 ${quickActionsOpen ? 'rotate-45' : ''}`} />
-                <span className="hidden xs:inline sm:inline">Actions</span>
-              </button>
-
-              {/* Quick Actions Dropdown Menu */}
-              <AnimatePresence>
-                {quickActionsOpen && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-40 bg-slate-900/10 cursor-default" 
-                      onClick={() => setQuickActionsOpen(false)} 
-                    />
-                    <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                      className="fixed sm:absolute inset-x-3 sm:inset-x-auto right-3 sm:right-0 top-16 sm:top-auto sm:mt-2.5 max-w-[calc(100vw-1.5rem)] sm:w-80 bg-white rounded-2xl shadow-2xl shadow-slate-900/20 border border-slate-200/90 py-2.5 z-50 ring-1 ring-black/5"
-                    >
-                      <div className="px-3.5 pb-2 mb-1 border-b border-slate-100 flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                            Quick Operations Hub
-                          </span>
-                          <span className="text-xs font-extrabold text-slate-900">
-                            Essential Clinic Actions
-                          </span>
-                        </div>
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-primary/10 text-primary uppercase">
-                          Executive
-                        </span>
-                      </div>
-
-                      <div className="py-1 space-y-0.5">
-                        <button
-                          onClick={() => {
-                            setQuickActionsOpen(false);
-                            setExportOpen(true);
-                          }}
-                          className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-primary/5 hover:text-primary flex items-center gap-2.5 transition-colors group"
-                        >
-                          <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                            <Download className="w-3.5 h-3.5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="block font-bold text-slate-900 group-hover:text-primary truncate">Export Clinical Reports</span>
-                            <span className="block text-[10px] text-slate-400 truncate">PDF, Excel, PBIX, or CSV datasets</span>
-                          </div>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setQuickActionsOpen(false);
-                            setPowerBiOpen(true);
-                          }}
-                          className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-amber-500/10 hover:text-amber-800 flex items-center gap-2.5 transition-colors group"
-                        >
-                          <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                            <BarChart3 className="w-3.5 h-3.5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="block font-bold text-slate-900 group-hover:text-amber-700 truncate">Power BI Telemetry</span>
-                            <span className="block text-[10px] text-slate-400 truncate">Azure Healthcare Fabric metrics</span>
-                          </div>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setQuickActionsOpen(false);
-                            navigate('/dashboard/doctors?add=true');
-                          }}
-                          className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2.5 transition-colors group"
-                        >
-                          <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                            <UserPlus className="w-3.5 h-3.5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="block font-bold text-slate-900 group-hover:text-indigo-700 truncate">Add New Doctor / Surgeon</span>
-                            <span className="block text-[10px] text-slate-400 truncate">Register NPI, specialty &amp; OR assignment</span>
-                          </div>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setQuickActionsOpen(false);
-                            navigate('/dashboard/patients');
-                          }}
-                          className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-sky-50 hover:text-sky-700 flex items-center gap-2.5 transition-colors group"
-                        >
-                          <div className="w-7 h-7 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                            <Users className="w-3.5 h-3.5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="block font-bold text-slate-900 group-hover:text-sky-700 truncate">Patient EHR Registry</span>
-                            <span className="block text-[10px] text-slate-400 truncate">Search MRN &amp; patient records</span>
-                          </div>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setQuickActionsOpen(false);
-                            navigate('/dashboard/laboratory');
-                          }}
-                          className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2.5 transition-colors group"
-                        >
-                          <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                            <FlaskConical className="w-3.5 h-3.5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="block font-bold text-slate-900 group-hover:text-purple-700 truncate">Order Lab Diagnostics</span>
-                            <span className="block text-[10px] text-slate-400 truncate">CBCT scans, biopsy &amp; pathology</span>
-                          </div>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setQuickActionsOpen(false);
-                            setBroadcastModalOpen(true);
-                          }}
-                          className="w-full px-3.5 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors group"
-                        >
-                          <div className="w-7 h-7 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                            <Radio className="w-3.5 h-3.5 animate-pulse" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="block font-bold text-red-600 truncate">Emergency Broadcast Alert</span>
-                            <span className="block text-[10px] text-red-400 truncate">Instant Code Blue / Critical Notice</span>
-                          </div>
-                        </button>
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Direct Export Reports Button - Accessible on Phone, Tablet & Desktop! */}
-            <button
-              onClick={() => setExportOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-all active:scale-95 border border-slate-200/60 shadow-2xs"
-              title="Export Clinical Reports (PDF, Excel, PBIX, CSV)"
-            >
-              <Download className="w-3.5 h-3.5 text-slate-600" />
-              <span className="hidden xs:inline sm:inline">Export</span>
-            </button>
-
-            {/* Direct Power BI Button */}
-            <button
-              onClick={() => setPowerBiOpen(true)}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 font-semibold rounded-xl text-xs border border-amber-500/20 transition-all shadow-xs active:scale-95"
-              title="Open Microsoft Power BI Telemetry"
-            >
-              <BarChart3 className="w-3.5 h-3.5 text-amber-600" />
-              <span>Power BI</span>
-            </button>
-
-            {/* Notifications Menu with Popover */}
-            <div className="relative" ref={notificationRef}>
-              <button
-                onClick={() => {
-                  setNotificationsOpen(!notificationsOpen);
-                  if (profileOpen) setProfileOpen(false);
-                }}
-                className={`relative p-2 rounded-xl transition-all ${
-                  notificationsOpen 
-                    ? 'bg-primary/10 text-primary ring-2 ring-primary/20' 
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-                title="Clinical Alert Center"
-                aria-expanded={notificationsOpen}
-              >
-                <BellRing className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-white animate-pulse shadow-sm" />
-                )}
-              </button>
-
-              {/* Notification Popover */}
-              <AnimatePresence>
-                {notificationsOpen && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-40 bg-slate-900/10 cursor-default" 
-                      onClick={() => setNotificationsOpen(false)} 
-                    />
-                    <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                      className="fixed sm:absolute inset-x-2.5 sm:inset-x-auto right-2.5 sm:right-0 top-16 sm:top-auto sm:mt-2.5 max-w-[calc(100vw-1.25rem)] sm:w-[420px] bg-white rounded-2xl shadow-2xl shadow-slate-900/20 border border-slate-200/90 overflow-hidden z-50 ring-1 ring-black/5 flex flex-col max-h-[85vh]"
-                    >
-                    {/* Popover Header */}
-                    <div className="p-3.5 sm:p-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white shrink-0">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-amber-400/20 flex items-center justify-center shrink-0">
-                            <BellRing className="w-4 h-4 text-amber-300" />
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-xs tracking-wide">Clinical Intelligence Alerts</h4>
-                            <p className="text-[10px] text-slate-300">Live HL7 &amp; Hospital Telemetry</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {unreadCount > 0 && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-400 text-slate-950 shadow-xs">
-                              {unreadCount} New
-                            </span>
-                          )}
-                          <button
-                            onClick={() => setNotificationsOpen(false)}
-                            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Filter Chips */}
-                      <div className="flex items-center justify-between gap-1 mt-2.5 pt-2.5 border-t border-slate-700/60 overflow-x-auto pb-0.5">
-                        <div className="flex items-center gap-1 shrink-0">
-                          {(['all', 'critical', 'financial', 'triage'] as const).map((tab) => (
-                            <button
-                              key={tab}
-                              onClick={() => setNotificationFilter(tab)}
-                              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[10px] font-bold capitalize transition-all shrink-0 ${
-                                notificationFilter === tab
-                                  ? 'bg-white text-slate-900 shadow-xs'
-                                  : 'text-slate-300 hover:text-white hover:bg-white/10'
-                              }`}
-                            >
-                              {tab}
-                            </button>
-                          ))}
-                        </div>
-                        {unreadCount > 0 && (
-                          <button
-                            onClick={markAllNotificationsRead}
-                            className="text-[10px] text-sky-300 hover:text-white transition-colors flex items-center gap-1 font-semibold shrink-0"
-                          >
-                            <Check className="w-3 h-3" />
-                            <span>Mark read</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Notification List */}
-                    <div className="max-h-[50vh] sm:max-h-[340px] overflow-y-auto divide-y divide-slate-100 flex-1">
-                      {filteredNotifications.length === 0 ? (
-                        <div className="p-8 text-center text-slate-400">
-                          <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-400 mb-2 opacity-80" />
-                          <p className="text-xs font-semibold text-slate-600">All alerts cleared</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5">No pending triage or clinical events</p>
-                        </div>
-                      ) : (
-                        filteredNotifications.map((item) => (
-                          <div
-                            key={item.id}
-                            onClick={() => handleNotificationClick(item)}
-                            className={`p-3.5 hover:bg-slate-50/90 transition-all flex items-start gap-3 cursor-pointer group relative ${
-                              !item.read ? 'bg-primary/5' : ''
-                            }`}
-                          >
-                            <div className="shrink-0 mt-0.5">
-                              {item.type === 'critical' ? (
-                                <div className="w-8 h-8 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shadow-xs">
-                                  <AlertTriangle className="w-4 h-4" />
-                                </div>
-                              ) : item.type === 'financial' ? (
-                                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shadow-xs">
-                                  <CreditCard className="w-4 h-4" />
-                                </div>
-                              ) : (
-                                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-xs">
-                                  <CheckCircle2 className="w-4 h-4" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0 pr-6">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-xs text-slate-900 group-hover:text-primary transition-colors truncate">
-                                  {item.title}
-                                </span>
-                                {!item.read && (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                                )}
-                              </div>
-                              <p className="text-[11px] text-slate-600 leading-snug mt-1 line-clamp-2">
-                                {item.message}
-                              </p>
-                              <div className="flex items-center justify-between mt-1.5 text-[10px] text-slate-400">
-                                <span className="flex items-center gap-1 font-medium">
-                                  <Clock className="w-3 h-3 text-slate-400" /> {item.time}
-                                </span>
-                                <span className="font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
-                                  Review details &rarr;
-                                </span>
-                              </div>
-                            </div>
-                            {/* Dismiss single button */}
-                            <button
-                              onClick={(e) => dismissNotification(e, item.id)}
-                              className="absolute top-3 right-3 p-1 rounded-md text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
-                              title="Dismiss alert"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    {/* Popover Footer */}
-                    <div className="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
-                      <button
-                        onClick={() => {
-                          setNotificationsOpen(false);
-                          setPowerBiOpen(true);
-                        }}
-                        className="font-bold text-primary hover:text-primary/80 flex items-center gap-1.5 transition-colors"
-                      >
-                        <BarChart3 className="w-3.5 h-3.5" />
-                        <span>Telemetry in Power BI</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => setNotifications([])}
-                        className="text-[11px] text-slate-500 hover:text-red-600 transition-colors"
-                      >
-                        Clear all
-                      </button>
-                    </div>
-                  </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Profile Dropdown */}
-            <div className="relative" ref={profileRef}>
+            {/* Profile Dropdown: Profile Picture & Name */}
+            <div className="relative shrink-0" ref={profileRef}>
               <button
                 onClick={() => {
                   setProfileOpen(!profileOpen);
                   if (notificationsOpen) setNotificationsOpen(false);
                 }}
-                className={`flex items-center gap-2 p-1.5 rounded-xl transition-all ${
+                className={`flex items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 rounded-xl transition-all shrink-0 ${
                   profileOpen ? 'bg-slate-100 ring-2 ring-primary/20' : 'hover:bg-slate-100'
                 }`}
                 aria-expanded={profileOpen}
               >
-                <div className="relative">
+                <div className="relative shrink-0">
                   <img
                     src={userProfile.avatar}
                     alt={userProfile.name}
-                    className="w-8 h-8 rounded-lg object-cover ring-2 ring-primary/30"
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-cover ring-2 ring-primary/30"
                   />
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white" />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2 sm:w-2.5 h-2 sm:h-2.5 bg-emerald-500 rounded-full ring-2 ring-white" />
                 </div>
-                <div className="hidden sm:block text-left">
-                  <span className="text-xs font-bold text-slate-900 block leading-tight">{userProfile.name}</span>
-                  <span className="text-[10px] text-slate-500 font-medium block">{userProfile.role}</span>
+                <div className="text-left shrink-0">
+                  <span className="text-[11px] sm:text-xs font-bold text-slate-900 block leading-tight max-w-[70px] xs:max-w-[100px] sm:max-w-none truncate">
+                    {userProfile.name.split(',')[0]}
+                  </span>
+                  <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium hidden sm:block">
+                    {userProfile.role}
+                  </span>
                 </div>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
+                <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
               </button>
 
               <AnimatePresence>
