@@ -5,7 +5,6 @@ import {
   Lock,
   UserPlus,
   Building,
-  BadgeCheck,
   Key,
   Eye,
   EyeOff,
@@ -13,13 +12,17 @@ import {
   Smartphone,
   Cpu,
   Mail,
-  FileText,
   User,
   Hash,
   Briefcase,
   Check,
   Headphones,
   Sparkles,
+  Phone,
+  AlertCircle,
+  RefreshCw,
+  X,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface LoginProps {
@@ -28,75 +31,213 @@ interface LoginProps {
   onLoginSuccess?: () => void;
 }
 
+// Official Admin Credentials
+export const OFFICIAL_ADMIN_CREDENTIALS = {
+  email: 'admin@smileclinic.com',
+  password: 'Admin@Smile2026#',
+  role: 'Chief Clinical Administrator',
+  name: 'Dr. Sneha Lal, MD',
+};
+
 export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, onLoginSuccess }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // If path is /signup, default to signup tab
+  // Mode: Sign In or Sign Up
   const [tab, setTab] = useState<'signin' | 'signup'>(
     location.pathname === '/signup' || initialMode === 'signup' ? 'signup' : 'signin'
   );
 
   // Sign In fields
   const [department, setDepartment] = useState('administration');
-  const [email, setEmail] = useState('dr.sneha.lal@smileclinic.com');
-  const [password, setPassword] = useState('CentralAdmin2026!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [mfaMethod, setMfaMethod] = useState<'duo' | 'fido' | 'sms'>('duo');
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   // Sign Up fields
   const [practitionerName, setPractitionerName] = useState('');
   const [npiLicense, setNpiLicense] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
+  const [signupPhone, setSignupPhone] = useState('');
   const [signupRole, setSignupRole] = useState('Attending Physician');
   const [signupPassword, setSignupPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [hipaaConsent, setHipaaConsent] = useState(false);
+  const [signupError, setSignupError] = useState<string | null>(null);
 
-  // Calculate password strength
-  const getPasswordStrength = (pass: string) => {
-    let score = 0;
-    if (pass.length >= 8) score++;
-    if (pass.length >= 12) score++;
-    if (/[A-Z]/.test(pass) && /[a-z]/.test(pass)) score++;
-    if (/[0-9]/.test(pass) && /[^A-Za-z0-9]/.test(pass)) score++;
-    return score;
+  // Dual OTP Verification Modal State
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [emailOtp, setEmailOtp] = useState('');
+  const [mobileOtp, setMobileOtp] = useState('');
+  const [mockEmailOtp, setMockEmailOtp] = useState('482910');
+  const [mockMobileOtp, setMockMobileOtp] = useState('739154');
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(45);
+
+  // Password criteria evaluation
+  const isMin8Chars = signupPassword.length >= 8;
+  const isRecommended12 = signupPassword.length >= 12;
+  const hasCapital = /[A-Z]/.test(signupPassword);
+  const numberCount = (signupPassword.match(/\d/g) || []).length;
+  const hasMin2Numbers = numberCount >= 2;
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(signupPassword);
+  const passwordsMatch = signupPassword.length > 0 && signupPassword === confirmPassword;
+
+  const isPasswordValid = isMin8Chars && hasCapital && hasMin2Numbers && hasSpecialChar;
+
+  // Auto-fill official admin credentials
+  const fillOfficialCredentials = () => {
+    setEmail(OFFICIAL_ADMIN_CREDENTIALS.email);
+    setPassword(OFFICIAL_ADMIN_CREDENTIALS.password);
+    setLoginError(null);
   };
-  const passwordStrength = getPasswordStrength(signupPassword);
 
+  // Sign In Handler
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
-    sessionStorage.setItem('admin_auth', 'true');
-    onLoginSuccess?.();
-    onNotify?.(
-      'Authentication Successful',
-      `Welcome Dr. Sneha Lal, MD (Chief Clinical Admin). HIPAA TLS session initialized.`,
-      'system'
+    setLoginError(null);
+
+    const inputEmail = email.trim().toLowerCase();
+    const inputPass = password;
+
+    // Check against official admin credentials
+    const isOfficialMatch =
+      inputEmail === OFFICIAL_ADMIN_CREDENTIALS.email.toLowerCase() &&
+      inputPass === OFFICIAL_ADMIN_CREDENTIALS.password;
+
+    // Also check against registered accounts in localStorage
+    const registeredUsers = JSON.parse(localStorage.getItem('smileclinic_registered_admins') || '[]');
+    const registeredUser = registeredUsers.find(
+      (u: any) => u.email.toLowerCase() === inputEmail && u.password === inputPass
     );
-    navigate('/dashboard');
+
+    if (isOfficialMatch || registeredUser) {
+      const activeName = isOfficialMatch ? OFFICIAL_ADMIN_CREDENTIALS.name : registeredUser.name;
+      const activeEmail = isOfficialMatch ? OFFICIAL_ADMIN_CREDENTIALS.email : registeredUser.email;
+
+      sessionStorage.setItem('admin_auth', 'true');
+      sessionStorage.setItem('admin_email', activeEmail);
+      sessionStorage.setItem('admin_name', activeName);
+
+      onLoginSuccess?.();
+      onNotify?.(
+        'Authentication Successful',
+        `Welcome ${activeName}. Verified secure HIPAA TLS session initialized.`,
+        'system'
+      );
+      navigate('/dashboard');
+    } else {
+      setLoginError(
+        'Invalid email or password. Please use the official Admin credentials (admin@smileclinic.com / Admin@Smile2026#) or your registered staff account.'
+      );
+    }
   };
 
-  const handleSignUp = (e: React.FormEvent) => {
+  // Trigger Sign Up OTP Step
+  const handleInitiateSignUp = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hipaaConsent) {
-      alert('Please check the HIPAA Privacy & Security declaration checkbox.');
+    setSignupError(null);
+
+    if (!isPasswordValid) {
+      setSignupError(
+        'Password does not meet all security criteria (minimum 8-12 characters, 1 capital letter, 2 numbers, and 1 special symbol).'
+      );
       return;
     }
-    sessionStorage.setItem('admin_auth', 'true');
-    onLoginSuccess?.();
-    onNotify?.(
-      'Staff Credential Registered',
-      `Practitioner account for ${practitionerName || 'Dr. Clinical Specialist'} created. Welcome to Smile Clinic Admin.`,
-      'system'
-    );
-    navigate('/dashboard');
+
+    if (!passwordsMatch) {
+      setSignupError('Passwords do not match. Please verify your confirm password.');
+      return;
+    }
+
+    const cleanPhone = signupPhone.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      setSignupError('Please provide a valid 10-digit mobile phone number for OTP verification.');
+      return;
+    }
+
+    if (!hipaaConsent) {
+      setSignupError('Please acknowledge adherence to federal HIPAA Privacy & Security regulations.');
+      return;
+    }
+
+    // Generate fresh 6-digit mock codes
+    const newEmailCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const newMobileCode = Math.floor(100000 + Math.random() * 900000).toString();
+    setMockEmailOtp(newEmailCode);
+    setMockMobileOtp(newMobileCode);
+    setEmailOtp('');
+    setMobileOtp('');
+    setOtpError(null);
+    setShowOtpModal(true);
+    setResendCountdown(60);
+  };
+
+  // Auto-fill demo OTPs
+  const handleAutoFillOtp = () => {
+    setEmailOtp(mockEmailOtp);
+    setMobileOtp(mockMobileOtp);
+    setOtpError(null);
+  };
+
+  // Confirm OTP and complete registration
+  const handleVerifyOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    setOtpError(null);
+
+    if (emailOtp.trim() !== mockEmailOtp) {
+      setOtpError('Invalid Email OTP code. Please recheck your code or click Auto-fill.');
+      return;
+    }
+
+    if (mobileOtp.trim() !== mockMobileOtp) {
+      setOtpError('Invalid Mobile OTP code. Please recheck your SMS code or click Auto-fill.');
+      return;
+    }
+
+    setIsVerifying(true);
+    setTimeout(() => {
+      // Save new account into localStorage
+      const existing = JSON.parse(localStorage.getItem('smileclinic_registered_admins') || '[]');
+      const newUser = {
+        name: practitionerName || 'Dr. Medical Specialist',
+        license: npiLicense,
+        email: signupEmail.trim(),
+        phone: signupPhone.trim(),
+        role: signupRole,
+        password: signupPassword,
+        verifiedAt: new Date().toISOString(),
+      };
+      existing.push(newUser);
+      localStorage.setItem('smileclinic_registered_admins', JSON.stringify(existing));
+
+      sessionStorage.setItem('admin_auth', 'true');
+      sessionStorage.setItem('admin_email', newUser.email);
+      sessionStorage.setItem('admin_name', newUser.name);
+
+      setIsVerifying(false);
+      setShowOtpModal(false);
+
+      onLoginSuccess?.();
+      onNotify?.(
+        'Staff Credential Registered',
+        `Account verified for ${newUser.name}. Welcome to Smile Clinic Administration.`,
+        'system'
+      );
+      navigate('/dashboard');
+    }, 600);
   };
 
   return (
     <div className="bg-[#f7fafc] font-sans text-slate-800 min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-          {/* LEFT HERO: Dynamic Content Altering on Tab Change */}
+          {/* LEFT HERO PANEL */}
           <div className="lg:col-span-5 flex flex-col justify-between bg-[#005c65] text-white rounded-2xl p-6 sm:p-8 lg:p-10 relative overflow-hidden shadow-2xl">
             {/* Ambient glows */}
             <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-[#1560a4] opacity-35 blur-3xl pointer-events-none" />
@@ -109,9 +250,8 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
               </svg>
             </div>
 
-            {/* Upper Branding & Dynamic Content */}
+            {/* Upper Branding */}
             <div className="relative z-10 flex flex-col space-y-6">
-              {/* Header Logo */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="w-11 h-11 rounded-xl bg-white text-[#005c65] flex items-center justify-center shadow-lg font-bold">
@@ -131,7 +271,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                 </div>
               </div>
 
-              {/* Dynamic Animated Text & Metrics */}
+              {/* Dynamic Left Copy */}
               <AnimatePresence mode="wait">
                 {tab === 'signin' ? (
                   <motion.div
@@ -151,37 +291,35 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                       Unified Clinical Operating Environment.
                     </h1>
 
-                    <p className="text-sm text-teal-100/90 leading-relaxed">
-                      Empowering inpatient care teams, verified physicians, and administrative specialists with zero-latency EHR synchronization and multi-factor biometric assurance.
+                    <p className="text-teal-100/90 text-sm leading-relaxed">
+                      Empowering inpatient care teams, verified physicians, and administrative specialists with
+                      zero-latency EHR synchronization and multi-factor biometric assurance.
                     </p>
 
-                    {/* Metrics Bento */}
-                    <div className="grid grid-cols-2 gap-3 pt-3">
-                      <div className="bg-white/10 backdrop-blur-md rounded-xl p-3.5 flex flex-col justify-between border border-white/10">
-                        <span className="text-[11px] uppercase tracking-wider text-teal-200 font-semibold">
-                          System Uptime
-                        </span>
-                        <div className="flex items-baseline space-x-1 mt-1">
-                          <span className="text-2xl font-bold">99.98%</span>
-                          <span className="text-xs text-teal-300">SLAs</span>
+                    {/* Official Credentials Helper Box */}
+                    <div className="mt-4 p-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-xs space-y-2">
+                      <div className="flex items-center justify-between font-semibold text-teal-200">
+                        <span className="uppercase tracking-wider text-[11px]">Official Admin Credentials</span>
+                        <span className="bg-teal-400/20 text-teal-200 px-2 py-0.5 rounded text-[10px]">Ready</span>
+                      </div>
+                      <div className="font-mono bg-black/20 p-2.5 rounded-lg space-y-1 text-slate-100">
+                        <div className="flex justify-between">
+                          <span className="text-teal-300">Email:</span>
+                          <span className="font-bold">{OFFICIAL_ADMIN_CREDENTIALS.email}</span>
                         </div>
-                        <div className="w-full bg-white/20 h-1 rounded-full mt-2 overflow-hidden">
-                          <div className="bg-teal-300 h-full rounded-full w-[99.98%]" />
+                        <div className="flex justify-between">
+                          <span className="text-teal-300">Password:</span>
+                          <span className="font-bold">{OFFICIAL_ADMIN_CREDENTIALS.password}</span>
                         </div>
                       </div>
-
-                      <div className="bg-white/10 backdrop-blur-md rounded-xl p-3.5 flex flex-col justify-between border border-white/10">
-                        <span className="text-[11px] uppercase tracking-wider text-teal-200 font-semibold">
-                          Active Patient Records
-                        </span>
-                        <div className="flex items-baseline space-x-1 mt-1">
-                          <span className="text-2xl font-bold">14.8k+</span>
-                          <span className="text-xs text-teal-300">Live</span>
-                        </div>
-                        <div className="w-full bg-white/20 h-1 rounded-full mt-2 overflow-hidden">
-                          <div className="bg-blue-300 h-full rounded-full w-[84%]" />
-                        </div>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={fillOfficialCredentials}
+                        className="w-full mt-1 py-1.5 bg-teal-400/20 hover:bg-teal-400/30 text-teal-100 font-semibold rounded-lg transition-colors flex items-center justify-center space-x-1.5 text-xs"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Auto-Fill Admin Credentials</span>
+                      </button>
                     </div>
                   </motion.div>
                 ) : (
@@ -194,7 +332,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                     className="space-y-4 pt-2"
                   >
                     <div className="inline-flex items-center space-x-2 bg-emerald-500/30 text-teal-100 px-3 py-1 rounded-full text-xs font-medium">
-                      <BadgeCheck className="w-3.5 h-3.5" />
+                      <Check className="w-3.5 h-3.5" />
                       <span>Certified Medical Practitioner Onboarding</span>
                     </div>
 
@@ -202,55 +340,33 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                       Institutional Credentialing &amp; Clinical Onboarding.
                     </h1>
 
-                    <p className="text-sm text-teal-100/90 leading-relaxed">
-                      Join Smile Clinic&apos;s certified medical practitioner network. Direct integration with national NPI registries, HIPAA compliance clearinghouses, and encrypted audit trails.
+                    <p className="text-teal-100/90 text-sm leading-relaxed">
+                      Join Smile Clinic&apos;s certified medical practitioner network. Direct integration with national
+                      NPI registries, HIPAA clearinghouses, and encrypted audit trails.
                     </p>
 
-                    {/* Signup Metrics Bento */}
-                    <div className="grid grid-cols-2 gap-3 pt-3">
-                      <div className="bg-white/10 backdrop-blur-md rounded-xl p-3.5 flex flex-col justify-between border border-white/10">
-                        <span className="text-[11px] uppercase tracking-wider text-teal-200 font-semibold">
-                          Surgical Theatres
-                        </span>
-                        <div className="flex items-baseline space-x-1 mt-1">
-                          <span className="text-2xl font-bold">18 Suites</span>
-                          <span className="text-xs text-teal-300">OR Fleet</span>
-                        </div>
-                        <div className="w-full bg-white/20 h-1 rounded-full mt-2 overflow-hidden">
-                          <div className="bg-teal-300 h-full rounded-full w-[92%]" />
-                        </div>
+                    <div className="p-3.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-xs space-y-2">
+                      <div className="font-semibold text-teal-200 uppercase tracking-wider text-[11px]">
+                        Dual-Channel Verification
                       </div>
-
-                      <div className="bg-white/10 backdrop-blur-md rounded-xl p-3.5 flex flex-col justify-between border border-white/10">
-                        <span className="text-[11px] uppercase tracking-wider text-teal-200 font-semibold">
-                          Staff Practitioners
-                        </span>
-                        <div className="flex items-baseline space-x-1 mt-1">
-                          <span className="text-2xl font-bold">120+ MDs</span>
-                          <span className="text-xs text-teal-300">Active</span>
-                        </div>
-                        <div className="w-full bg-white/20 h-1 rounded-full mt-2 overflow-hidden">
-                          <div className="bg-blue-300 h-full rounded-full w-[88%]" />
-                        </div>
-                      </div>
+                      <p className="text-teal-100/80 text-[11px]">
+                        Enrollment requires simultaneous 6-digit verification sent to your official institutional email
+                        and registered clinical mobile number.
+                      </p>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            {/* Lower Compliance Showcase (Altered per tab) */}
-            <div className="relative z-10 pt-8 mt-6 border-t border-white/10">
-              <div className="flex items-center space-x-2 text-teal-200 text-xs font-semibold pb-3 uppercase tracking-wider">
-                <FileText className="w-4 h-4" />
-                <span>
-                  {tab === 'signin' ? 'Accredited Clinical Architecture' : 'Institutional Certifications'}
-                </span>
-              </div>
+            {/* Bottom Certifications Badge */}
+            <div className="relative z-10 pt-6 border-t border-white/15">
               <div className="grid grid-cols-3 gap-2">
                 <div className="bg-white/10 backdrop-blur-md rounded-lg py-2 px-3 text-center border border-white/10">
                   <span className="text-xs font-bold block">{tab === 'signin' ? 'HL7 FHIR' : 'AMA/ADA'}</span>
-                  <span className="text-[10px] text-teal-200 uppercase">{tab === 'signin' ? 'R4 API Core' : 'Board Approved'}</span>
+                  <span className="text-[10px] text-teal-200 uppercase">
+                    {tab === 'signin' ? 'R4 API Core' : 'Board Approved'}
+                  </span>
                 </div>
                 <div className="bg-white/10 backdrop-blur-md rounded-lg py-2 px-3 text-center border border-white/10">
                   <span className="text-xs font-bold block">HIPAA</span>
@@ -258,7 +374,9 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                 </div>
                 <div className="bg-white/10 backdrop-blur-md rounded-lg py-2 px-3 text-center border border-white/10">
                   <span className="text-xs font-bold block">{tab === 'signin' ? 'JCAHO' : 'SOC-2'}</span>
-                  <span className="text-[10px] text-teal-200 uppercase">{tab === 'signin' ? 'Standardized' : 'Type II'}</span>
+                  <span className="text-[10px] text-teal-200 uppercase">
+                    {tab === 'signin' ? 'Standardized' : 'Type II'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -272,11 +390,12 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                 <div className="inline-flex p-1 bg-slate-100 rounded-xl">
                   <button
                     type="button"
-                    onClick={() => setTab('signin')}
+                    onClick={() => {
+                      setTab('signin');
+                      setLoginError(null);
+                    }}
                     className={`px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-2 ${
-                      tab === 'signin'
-                        ? 'bg-[#005c65] text-white shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
+                      tab === 'signin' ? 'bg-[#005c65] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     <Lock className="w-3.5 h-3.5" />
@@ -284,11 +403,12 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                   </button>
                   <button
                     type="button"
-                    onClick={() => setTab('signup')}
+                    onClick={() => {
+                      setTab('signup');
+                      setSignupError(null);
+                    }}
                     className={`px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-2 ${
-                      tab === 'signup'
-                        ? 'bg-[#005c65] text-white shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
+                      tab === 'signup' ? 'bg-[#005c65] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     <UserPlus className="w-3.5 h-3.5" />
@@ -302,13 +422,13 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                 </div>
               </div>
 
-              {/* TAB 1: SIGN IN PANEL */}
+              {/* ===================== TAB 1: SIGN IN PANEL ===================== */}
               {tab === 'signin' && (
                 <motion.div
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -10 }}
-                  className="space-y-5"
+                  className="space-y-4"
                 >
                   <div>
                     <h2 className="text-xl font-bold text-slate-900">Staff Verification &amp; Access</h2>
@@ -317,25 +437,35 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                     </p>
                   </div>
 
-                  {/* SSO Quick Option */}
-                  <button
-                    type="button"
-                    onClick={handleSignIn}
-                    className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors text-slate-800 font-semibold text-xs py-2.5 px-4 rounded-lg flex items-center justify-center space-x-2 shadow-xs"
-                  >
-                    <Building className="w-4 h-4 text-blue-600" />
-                    <span>Login via Hospital ActiveDirectory / Okta SSO</span>
-                  </button>
-
-                  <div className="flex items-center space-x-3 my-2">
-                    <div className="flex-1 h-px bg-slate-200" />
-                    <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
-                      or direct sign in
-                    </span>
-                    <div className="flex-1 h-px bg-slate-200" />
+                  {/* Credentials Banner */}
+                  <div className="p-3 bg-teal-50 border border-[#005c65]/20 rounded-xl flex items-center justify-between">
+                    <div className="text-xs">
+                      <span className="font-bold text-[#005c65] block">Designated Admin Credentials</span>
+                      <span className="text-slate-600">
+                        <strong className="text-slate-800">{OFFICIAL_ADMIN_CREDENTIALS.email}</strong> &bull; Pass:{' '}
+                        <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-900 font-mono text-[11px]">
+                          {OFFICIAL_ADMIN_CREDENTIALS.password}
+                        </code>
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={fillOfficialCredentials}
+                      className="px-3 py-1.5 bg-[#005c65] hover:bg-[#007782] text-white text-xs font-semibold rounded-lg transition-colors flex items-center space-x-1 shrink-0"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Quick Fill</span>
+                    </button>
                   </div>
 
-                  <form onSubmit={handleSignIn} className="space-y-4">
+                  {loginError && (
+                    <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-start space-x-2">
+                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
+                      <span>{loginError}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleSignIn} className="space-y-3.5">
                     {/* Department Select */}
                     <div>
                       <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
@@ -361,7 +491,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                     {/* Hospital Email/ID */}
                     <div>
                       <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-                        Hospital Staff ID or License Email
+                        Hospital Staff ID or License Email *
                       </label>
                       <div className="relative">
                         <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
@@ -369,23 +499,23 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                           type="email"
                           required
                           value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="dr.sneha.lal@smileclinic.com"
+                          onChange={(e) => {
+                            setEmail(e.target.value);
+                            setLoginError(null);
+                          }}
+                          placeholder="admin@smileclinic.com"
                           className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#005c65]"
                         />
                       </div>
                     </div>
 
-                    {/* Master Passcode */}
+                    {/* Master Passcode with Eye Icon */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-xs font-semibold uppercase text-slate-600">
-                          Master Security Key / Password
+                          Master Security Key / Password *
                         </label>
-                        <Link
-                          to="/forgot-password"
-                          className="text-xs font-semibold text-[#005c65] hover:underline"
-                        >
+                        <Link to="/forgot-password" className="text-xs font-semibold text-[#005c65] hover:underline">
                           Forgot Credentials?
                         </Link>
                       </div>
@@ -395,14 +525,18 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                           type={showPassword ? 'text' : 'password'}
                           required
                           value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="••••••••••••••••"
+                          onChange={(e) => {
+                            setPassword(e.target.value);
+                            setLoginError(null);
+                          }}
+                          placeholder="Admin@Smile2026#"
                           className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#005c65]"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600"
+                          className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                          title={showPassword ? 'Hide password' : 'Show password'}
                         >
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
@@ -483,7 +617,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                     <div className="pt-2 space-y-2">
                       <button
                         type="submit"
-                        className="w-full py-3 px-6 bg-[#005c65] hover:bg-[#007782] transition-colors text-white font-semibold text-sm rounded-lg shadow-md shadow-[#005c65]/20 flex items-center justify-center space-x-2"
+                        className="w-full py-3 px-6 bg-[#005c65] hover:bg-[#007782] transition-colors text-white font-semibold text-sm rounded-lg shadow-md shadow-[#005c65]/20 flex items-center justify-center space-x-2 cursor-pointer"
                       >
                         <Lock className="w-4 h-4" />
                         <span>Authorize &amp; Sign In</span>
@@ -491,25 +625,18 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
 
                       <button
                         type="button"
-                        onClick={() => {
-                          onNotify?.(
-                            'Institutional Demo Active',
-                            'Welcome Dr. Sneha Lal, MD (Chief Clinical Admin). Entering dashboard...',
-                            'system'
-                          );
-                          navigate('/dashboard');
-                        }}
-                        className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 font-semibold text-xs rounded-lg flex items-center justify-center space-x-1.5"
+                        onClick={fillOfficialCredentials}
+                        className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 font-semibold text-xs rounded-lg flex items-center justify-center space-x-1.5 cursor-pointer"
                       >
                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Quick Demo Access &rarr; Open Dashboard Directly</span>
+                        <span>Populate Official Credentials &amp; Authenticate</span>
                       </button>
                     </div>
                   </form>
                 </motion.div>
               )}
 
-              {/* TAB 2: SIGN UP PANEL */}
+              {/* ===================== TAB 2: SIGN UP PANEL ===================== */}
               {tab === 'signup' && (
                 <motion.div
                   initial={{ opacity: 0, x: 10 }}
@@ -520,11 +647,18 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                   <div>
                     <h2 className="text-xl font-bold text-slate-900">Register Clinical Practitioner</h2>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      New staff enrollments require verification by the Department Credentialing Officer.
+                      Enter details. Dual Email and Mobile OTP verification will activate your credentials.
                     </p>
                   </div>
 
-                  <form onSubmit={handleSignUp} className="space-y-3.5">
+                  {signupError && (
+                    <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-start space-x-2">
+                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
+                      <span>{signupError}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleInitiateSignUp} className="space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
@@ -581,76 +715,158 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
 
                       <div>
                         <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-                          Department Role
+                          Mobile Phone (For SMS OTP) *
                         </label>
                         <div className="relative">
-                          <Briefcase className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
-                          <select
-                            value={signupRole}
-                            onChange={(e) => setSignupRole(e.target.value)}
-                            className="w-full pl-9 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#005c65]"
-                          >
-                            <option>Attending Physician</option>
-                            <option>Surgical Resident</option>
-                            <option>Charge Nurse</option>
-                            <option>Pathology Specialist</option>
-                            <option>Clinical Data Auditor</option>
-                          </select>
+                          <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                          <input
+                            type="tel"
+                            required
+                            placeholder="+1 (555) 782-9901"
+                            value={signupPhone}
+                            onChange={(e) => setSignupPhone(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#005c65]"
+                          />
                         </div>
                       </div>
                     </div>
 
-                    {/* Password setup with strength indicator */}
                     <div>
                       <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-                        Set Institutional Passcode *
+                        Department Role
                       </label>
                       <div className="relative">
-                        <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
-                        <input
-                          type={showSignupPassword ? 'text' : 'password'}
-                          required
-                          placeholder="Min 12 characters, numbers &amp; symbols"
-                          value={signupPassword}
-                          onChange={(e) => setSignupPassword(e.target.value)}
-                          className="w-full pl-9 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#005c65]"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowSignupPassword(!showSignupPassword)}
-                          className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                        <Briefcase className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                        <select
+                          value={signupRole}
+                          onChange={(e) => setSignupRole(e.target.value)}
+                          className="w-full pl-9 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#005c65]"
                         >
-                          {showSignupPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
+                          <option>Attending Physician</option>
+                          <option>Surgical Resident</option>
+                          <option>Charge Nurse</option>
+                          <option>Pathology Specialist</option>
+                          <option>Clinical Data Auditor</option>
+                          <option>Hospital Administration</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Passwords with Eye Icons */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
+                          Passcode (Min 8-12 chars) *
+                        </label>
+                        <div className="relative">
+                          <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                          <input
+                            type={showSignupPassword ? 'text' : 'password'}
+                            required
+                            placeholder="e.g. VanceAdmin2026#"
+                            value={signupPassword}
+                            onChange={(e) => setSignupPassword(e.target.value)}
+                            className="w-full pl-9 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#005c65]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowSignupPassword(!showSignupPassword)}
+                            className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                            title={showSignupPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showSignupPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
                       </div>
 
-                      {/* 4-bar strength indicator */}
-                      <div className="mt-2 flex items-center space-x-2">
-                        <div className="grid grid-cols-4 gap-1.5 flex-1">
-                          <div
-                            className={`h-1.5 rounded-full ${
-                              passwordStrength >= 1 ? 'bg-red-500' : 'bg-slate-200'
-                            }`}
+                      <div>
+                        <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
+                          Confirm Passcode *
+                        </label>
+                        <div className="relative">
+                          <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                          <input
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            required
+                            placeholder="Re-enter passcode"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className="w-full pl-9 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#005c65]"
                           />
-                          <div
-                            className={`h-1.5 rounded-full ${
-                              passwordStrength >= 2 ? 'bg-amber-500' : 'bg-slate-200'
-                            }`}
-                          />
-                          <div
-                            className={`h-1.5 rounded-full ${
-                              passwordStrength >= 3 ? 'bg-teal-500' : 'bg-slate-200'
-                            }`}
-                          />
-                          <div
-                            className={`h-1.5 rounded-full ${
-                              passwordStrength >= 4 ? 'bg-emerald-500' : 'bg-slate-200'
-                            }`}
-                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                            title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
                         </div>
-                        <span className="text-[11px] text-slate-500">
-                          {passwordStrength >= 3 ? 'Strong' : 'Min 12 chars'}
-                        </span>
+                      </div>
+                    </div>
+
+                    {/* Strict Password Checklist */}
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] space-y-1.5">
+                      <span className="font-semibold text-slate-700 block uppercase tracking-wider text-[10px]">
+                        Security Complexity Criteria:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        <div
+                          className={`flex items-center space-x-1.5 ${
+                            isMin8Chars ? 'text-emerald-700 font-semibold' : 'text-slate-500'
+                          }`}
+                        >
+                          <CheckCircle2
+                            className={`w-3.5 h-3.5 ${isMin8Chars ? 'text-emerald-600' : 'text-slate-300'}`}
+                          />
+                          <span>8–12+ Characters ({signupPassword.length}/12)</span>
+                        </div>
+                        <div
+                          className={`flex items-center space-x-1.5 ${
+                            hasCapital ? 'text-emerald-700 font-semibold' : 'text-slate-500'
+                          }`}
+                        >
+                          <CheckCircle2
+                            className={`w-3.5 h-3.5 ${hasCapital ? 'text-emerald-600' : 'text-slate-300'}`}
+                          />
+                          <span>1+ Uppercase Letter (A-Z)</span>
+                        </div>
+                        <div
+                          className={`flex items-center space-x-1.5 ${
+                            hasMin2Numbers ? 'text-emerald-700 font-semibold' : 'text-slate-500'
+                          }`}
+                        >
+                          <CheckCircle2
+                            className={`w-3.5 h-3.5 ${hasMin2Numbers ? 'text-emerald-600' : 'text-slate-300'}`}
+                          />
+                          <span>2+ Numbers (Found {numberCount})</span>
+                        </div>
+                        <div
+                          className={`flex items-center space-x-1.5 ${
+                            hasSpecialChar ? 'text-emerald-700 font-semibold' : 'text-slate-500'
+                          }`}
+                        >
+                          <CheckCircle2
+                            className={`w-3.5 h-3.5 ${hasSpecialChar ? 'text-emerald-600' : 'text-slate-300'}`}
+                          />
+                          <span>1+ Special Symbol (!@#$%...)</span>
+                        </div>
+                        <div
+                          className={`flex items-center space-x-1.5 sm:col-span-2 ${
+                            passwordsMatch ? 'text-emerald-700 font-semibold' : 'text-slate-500'
+                          }`}
+                        >
+                          <CheckCircle2
+                            className={`w-3.5 h-3.5 ${passwordsMatch ? 'text-emerald-600' : 'text-slate-300'}`}
+                          />
+                          <span>
+                            {passwordsMatch
+                              ? 'Passcodes Match Exactly'
+                              : confirmPassword.length > 0
+                              ? 'Passcodes Do Not Match'
+                              : 'Confirm Passcode Required'}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -666,7 +882,8 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                         />
                         <span className="text-xs text-slate-600 leading-tight">
                           I acknowledge adherence to the federal{' '}
-                          <strong className="text-slate-900">HIPAA Privacy &amp; Security Regulations</strong> and consent to active telemetry audit logging for electronic health records access.
+                          <strong className="text-slate-900">HIPAA Privacy &amp; Security Regulations</strong> and consent
+                          to dual OTP email and mobile verification for clinical credentials.
                         </span>
                       </label>
                     </div>
@@ -674,10 +891,10 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
                     <div className="pt-2">
                       <button
                         type="submit"
-                        className="w-full py-3 px-6 bg-[#005c65] hover:bg-[#007782] transition-colors text-white font-semibold text-sm rounded-lg shadow-md shadow-[#005c65]/20 flex items-center justify-center space-x-2"
+                        className="w-full py-3 px-6 bg-[#005c65] hover:bg-[#007782] transition-colors text-white font-semibold text-sm rounded-lg shadow-md shadow-[#005c65]/20 flex items-center justify-center space-x-2 cursor-pointer"
                       >
                         <UserPlus className="w-4 h-4" />
-                        <span>Submit Credential for Approval</span>
+                        <span>Verify &amp; Create Account (Email &amp; Mobile OTP)</span>
                       </button>
                     </div>
                   </form>
@@ -706,6 +923,162 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
           </div>
         </div>
       </div>
+
+      {/* ===================== DUAL OTP VERIFICATION MODAL ===================== */}
+      <AnimatePresence>
+        {showOtpModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-100 relative overflow-hidden"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-teal-50 text-[#005c65] flex items-center justify-center">
+                    <Shield className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">Institutional Identity Verification</h3>
+                    <p className="text-xs text-slate-500">Dual Email &amp; Mobile SMS authentication required</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowOtpModal(false)}
+                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Demo Notification Banner with One-Click Autofill */}
+              <div className="my-4 p-3.5 bg-blue-50/80 border border-blue-200/80 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-1.5 text-xs font-bold text-blue-900">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <span>Simulated Dispatch (Demo Server)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAutoFillOtp}
+                    className="text-xs font-bold text-blue-700 bg-white hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-300 transition-colors cursor-pointer"
+                  >
+                    Auto-Fill Both Codes
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                  <div className="bg-white p-2 rounded-lg border border-blue-200">
+                    <span className="text-[10px] uppercase block text-slate-500 font-sans font-semibold">
+                      Email Code ({signupEmail.slice(0, 15)}...)
+                    </span>
+                    <span className="text-sm font-bold text-slate-900">{mockEmailOtp}</span>
+                  </div>
+                  <div className="bg-white p-2 rounded-lg border border-blue-200">
+                    <span className="text-[10px] uppercase block text-slate-500 font-sans font-semibold">
+                      Mobile SMS ({signupPhone.slice(-4)})
+                    </span>
+                    <span className="text-sm font-bold text-slate-900">{mockMobileOtp}</span>
+                  </div>
+                </div>
+              </div>
+
+              {otpError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-start space-x-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
+                  <span>{otpError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                {/* 1. Email OTP Field */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-slate-700 mb-1">
+                    1. Email 6-Digit Verification Code
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+                    <input
+                      type="text"
+                      maxLength={6}
+                      required
+                      value={emailOtp}
+                      onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ''))}
+                      placeholder="e.g. 482910"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 font-mono tracking-widest focus:outline-none focus:ring-1 focus:ring-[#005c65]"
+                    />
+                  </div>
+                </div>
+
+                {/* 2. Mobile OTP Field */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-slate-700 mb-1">
+                    2. Mobile SMS 6-Digit Passcode
+                  </label>
+                  <div className="relative">
+                    <Smartphone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+                    <input
+                      type="text"
+                      maxLength={6}
+                      required
+                      value={mobileOtp}
+                      onChange={(e) => setMobileOtp(e.target.value.replace(/\D/g, ''))}
+                      placeholder="e.g. 739154"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 font-mono tracking-widest focus:outline-none focus:ring-1 focus:ring-[#005c65]"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newEmailCode = Math.floor(100000 + Math.random() * 900000).toString();
+                      const newMobileCode = Math.floor(100000 + Math.random() * 900000).toString();
+                      setMockEmailOtp(newEmailCode);
+                      setMockMobileOtp(newMobileCode);
+                      setResendCountdown(60);
+                    }}
+                    className="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center space-x-1 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Resend Codes ({resendCountdown}s)</span>
+                  </button>
+
+                  <div className="flex space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowOtpModal(false)}
+                      className="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isVerifying}
+                      className="px-5 py-2 text-xs font-bold text-white bg-[#005c65] hover:bg-[#007782] rounded-lg shadow-md shadow-[#005c65]/20 transition-colors flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      {isVerifying ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Verifying...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Verify &amp; Activate Account</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
