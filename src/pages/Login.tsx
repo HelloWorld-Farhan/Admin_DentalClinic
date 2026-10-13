@@ -25,9 +25,10 @@ import {
 interface LoginProps {
   initialMode?: 'signin' | 'signup';
   onNotify?: (title: string, message: string, type: 'critical' | 'financial' | 'triage' | 'system') => void;
+  onLoginSuccess?: () => void;
 }
 
-export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify }) => {
+export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, onLoginSuccess }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -65,6 +66,8 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify }
 
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
+    sessionStorage.setItem('admin_auth', 'true');
+    onLoginSuccess?.();
     onNotify?.(
       'Authentication Successful',
       `Welcome Dr. Sneha Lal, MD (Chief Clinical Admin). HIPAA TLS session initialized.`,
@@ -79,6 +82,8 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify }
       alert('Please check the HIPAA Privacy & Security declaration checkbox.');
       return;
     }
+    sessionStorage.setItem('admin_auth', 'true');
+    onLoginSuccess?.();
     onNotify?.(
       'Staff Credential Registered',
       `Practitioner account for ${practitionerName || 'Dr. Clinical Specialist'} created. Welcome to Smile Clinic Admin.`,

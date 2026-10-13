@@ -35,7 +35,11 @@ import ProfileSettingsModal, { UserProfileData } from './ProfileSettingsModal';
 import ToastNotification, { ToastMessage } from './ToastNotification';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
-export default function Layout() {
+interface LayoutProps {
+  onLogout?: () => void;
+}
+
+export default function Layout({ onLogout }: LayoutProps = {}) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -176,6 +180,9 @@ export default function Layout() {
 
   const handleLogout = () => {
     setProfileOpen(false);
+    sessionStorage.removeItem('admin_auth');
+    localStorage.removeItem('admin_auth');
+    onLogout?.();
     showToast('info', 'Session Terminated', 'Securely logged out of Admin Portal');
     setTimeout(() => {
       navigate('/login');

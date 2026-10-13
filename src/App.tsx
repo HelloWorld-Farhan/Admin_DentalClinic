@@ -14,6 +14,20 @@ import ToastNotification, { ToastMessage } from './components/ToastNotification'
 
 export default function App() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return sessionStorage.getItem('admin_auth') === 'true';
+  });
+
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+    sessionStorage.setItem('admin_auth', 'true');
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem('admin_auth');
+    localStorage.removeItem('admin_auth');
+  };
 
   const handleNotify = (
     title: string,
@@ -33,13 +47,22 @@ export default function App() {
     <BrowserRouter>
       <ToastNotification toasts={toasts} onDismiss={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
       <Routes>
-        {/* Auth routes */}
-        <Route path="/login" element={<Login onNotify={handleNotify} />} />
-        <Route path="/signup" element={<Signup onNotify={handleNotify} />} />
+        {/* Auth routes - Always opens firstly when accessing portal */}
+        <Route path="/login" element={<Login onNotify={handleNotify} onLoginSuccess={handleLoginSuccess} />} />
+        <Route path="/signup" element={<Signup onNotify={handleNotify} onLoginSuccess={handleLoginSuccess} />} />
         <Route path="/forgot-password" element={<ForgotPassword onNotify={handleNotify} />} />
 
-        {/* Protected Admin App under Layout */}
-        <Route path="/dashboard" element={<Layout />}>
+        {/* Protected Admin App under Layout - Only accessible after Login */}
+        <Route 
+          path="/dashboard" 
+          element={
+            isAuthenticated ? (
+              <Layout onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        >
           <Route index element={<Dashboard onNotify={handleNotify} />} />
           <Route path="doctors" element={<Doctors onNotify={handleNotify} />} />
           <Route path="patients" element={<Patients onNotify={handleNotify} />} />
@@ -49,15 +72,15 @@ export default function App() {
         </Route>
 
         {/* Direct URL Aliases to match Stitch paths */}
-        <Route path="/doctors" element={<Navigate to="/dashboard/doctors" replace />} />
-        <Route path="/patients" element={<Navigate to="/dashboard/patients" replace />} />
-        <Route path="/reception" element={<Navigate to="/dashboard/reception" replace />} />
-        <Route path="/receptionists" element={<Navigate to="/dashboard/reception" replace />} />
-        <Route path="/billing" element={<Navigate to="/dashboard/billing" replace />} />
-        <Route path="/billing-team" element={<Navigate to="/dashboard/billing" replace />} />
-        <Route path="/laboratory" element={<Navigate to="/dashboard/laboratory" replace />} />
+        <Route path="/doctors" element={isAuthenticated ? <Navigate to="/dashboard/doctors" replace /> : <Navigate to="/login" replace />} />
+        <Route path="/patients" element={isAuthenticated ? <Navigate to="/dashboard/patients" replace /> : <Navigate to="/login" replace />} />
+        <Route path="/reception" element={isAuthenticated ? <Navigate to="/dashboard/reception" replace /> : <Navigate to="/login" replace />} />
+        <Route path="/receptionists" element={isAuthenticated ? <Navigate to="/dashboard/reception" replace /> : <Navigate to="/login" replace />} />
+        <Route path="/billing" element={isAuthenticated ? <Navigate to="/dashboard/billing" replace /> : <Navigate to="/login" replace />} />
+        <Route path="/billing-team" element={isAuthenticated ? <Navigate to="/dashboard/billing" replace /> : <Navigate to="/login" replace />} />
+        <Route path="/laboratory" element={isAuthenticated ? <Navigate to="/dashboard/laboratory" replace /> : <Navigate to="/login" replace />} />
 
-        {/* Default route - Opens Login & Signup first, then directs to Dashboard */}
+        {/* Default route - ALWAYS opens Login first! */}
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
