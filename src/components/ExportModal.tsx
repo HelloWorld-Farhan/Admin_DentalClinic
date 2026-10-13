@@ -10,6 +10,8 @@ import {
   CheckCircle2, 
   Loader2 
 } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { ModalPortal } from './ModalPortal';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -18,6 +20,9 @@ interface ExportModalProps {
 }
 
 export default function ExportModal({ isOpen, onClose, reportTitle = 'Executive Operational Report' }: ExportModalProps) {
+  // Prevent background window from scrolling when modal is open
+  useBodyScrollLock(isOpen);
+
   const [selectedFormat, setSelectedFormat] = useState<'pdf' | 'excel' | 'pbix' | 'csv'>('pdf');
   const [isExporting, setIsExporting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -59,16 +64,17 @@ export default function ExportModal({ isOpen, onClose, reportTitle = 'Executive 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 overflow-y-auto">
-          {/* Animated Backdrop with Click-Outside to Close */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm"
-          />
+        <ModalPortal>
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+            {/* Animated Backdrop with Click-Outside to Close */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={onClose}
+              className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+            />
 
           {/* Animated Modal Card */}
           <motion.div
@@ -223,6 +229,7 @@ export default function ExportModal({ isOpen, onClose, reportTitle = 'Executive 
           </div>
         </motion.div>
         </div>
+        </ModalPortal>
       )}
     </AnimatePresence>
   );

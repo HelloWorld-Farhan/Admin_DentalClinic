@@ -57,9 +57,9 @@ export default function App() {
         <Route path="/billing-team" element={<Navigate to="/dashboard/billing" replace />} />
         <Route path="/laboratory" element={<Navigate to="/dashboard/laboratory" replace />} />
 
-        {/* Default route */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        {/* Default route - Opens Login & Signup first, then directs to Dashboard */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );

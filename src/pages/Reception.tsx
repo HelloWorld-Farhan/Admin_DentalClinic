@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { mockTriageQueue, mockDoctors } from '../data/mockData';
 import { TriageItem, TriageAcuity, InsuranceVerificationStatus } from '../types';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { ModalPortal } from '../components/ModalPortal';
 
 interface ReceptionProps {
   onNotify?: (title: string, message: string, type: 'critical' | 'financial' | 'triage' | 'system') => void;
@@ -38,6 +40,10 @@ export const Reception: React.FC<ReceptionProps> = ({ onNotify, onOpenPowerBI, o
   const [checkInModalOpen, setCheckInModalOpen] = useState(false);
   const [visitorModalOpen, setVisitorModalOpen] = useState(false);
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
+
+  // Freeze background window scrolling when ANY reception modal is open
+  const isAnyModalOpen = Boolean(checkInModalOpen || visitorModalOpen || emergencyModalOpen);
+  useBodyScrollLock(isAnyModalOpen);
   const [nowServing, setNowServing] = useState({
     counter1: '#A-102',
     counter2: '#B-045',
@@ -616,15 +622,36 @@ export const Reception: React.FC<ReceptionProps> = ({ onNotify, onOpenPowerBI, o
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
-                  {filteredQueue.map((item) => {
-                    const isUrgent = item.acuity === 'Immediate';
-                    return (
-                      <tr
-                        key={item.id}
-                        className={`hover:bg-slate-50/80 transition-colors ${
-                          isUrgent ? 'bg-red-50/40' : ''
-                        }`}
-                      >
+                  {filteredQueue.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-2">
+                          <Users className="w-10 h-10 text-slate-300" />
+                          <p className="text-sm font-bold text-slate-700">No triage queue entries found</p>
+                          <p className="text-xs text-slate-400">No patients currently match the active tab &ldquo;{activeTab}&rdquo; or filter priority</p>
+                          <button
+                            onClick={() => {
+                              setActiveTab('All');
+                              setFilterPriority('ALL');
+                              setSearchQuery('');
+                            }}
+                            className="mt-2 px-3 py-1.5 bg-[#005c65] text-white rounded-lg text-xs font-semibold"
+                          >
+                            Reset All Filters
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredQueue.map((item) => {
+                      const isUrgent = item.acuity === 'Immediate';
+                      return (
+                        <tr
+                          key={item.id}
+                          className={`hover:bg-slate-50/80 transition-colors ${
+                            isUrgent ? 'bg-red-50/40' : ''
+                          }`}
+                        >
                         <td className="py-3 px-3">
                           <div className="flex flex-col">
                             <span className={`font-bold font-mono text-sm ${isUrgent ? 'text-red-700' : 'text-[#005c65]'}`}>
@@ -699,7 +726,7 @@ export const Reception: React.FC<ReceptionProps> = ({ onNotify, onOpenPowerBI, o
                         </td>
                       </tr>
                     );
-                  })}
+                  }))}
                 </tbody>
               </table>
             </div>
@@ -878,105 +905,108 @@ export const Reception: React.FC<ReceptionProps> = ({ onNotify, onOpenPowerBI, o
       {/* MODAL: New Check-In Modal */}
       <AnimatePresence>
         {checkInModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setCheckInModalOpen(false)}
-              className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative z-10 bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-lg p-6 overflow-hidden"
-            >
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-lg bg-teal-50 text-[#005c65] flex items-center justify-center">
-                    <Monitor className="w-5 h-5" />
+          <ModalPortal>
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setCheckInModalOpen(false)}
+                className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 15 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 15 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative z-10 bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-lg p-6 overflow-hidden"
+              >
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-lg bg-teal-50 text-[#005c65] flex items-center justify-center">
+                      <Monitor className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">Direct Patient Check-In</h3>
+                      <p className="text-xs text-slate-500">Issue queue token and notify attending clinician</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">Direct Patient Check-In</h3>
-                    <p className="text-xs text-slate-500">Issue queue token and notify attending clinician</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setCheckInModalOpen(false)}
-                  className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-4 pt-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">Patient Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Ronald Vance"
-                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#005c65]"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">Appointment Type</label>
-                    <select className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900">
-                      <option>Scheduled Consult</option>
-                      <option>Follow-up Suture Removal</option>
-                      <option>Diagnostics / CT Scan</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">Assign Room</label>
-                    <select className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900">
-                      <option>Suite 101 - Dr. Vance</option>
-                      <option>Suite 204 - Dr. Rostova</option>
-                      <option>Operatory 3 - Dr. Patel</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
                   <button
                     onClick={() => setCheckInModalOpen(false)}
-                    className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-semibold"
+                    className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => {
-                      setCheckInModalOpen(false);
-                      onNotify?.('Check-In Completed', 'Token generated and sent to SMS + Lobby Board', 'triage');
-                    }}
-                    className="px-5 py-2 bg-[#005c65] text-white rounded-lg text-sm font-semibold hover:bg-[#007782]"
-                  >
-                    Confirm &amp; Issue Token
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
-              </div>
-            </motion.div>
-          </div>
+
+                <div className="space-y-4 pt-4">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">Patient Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Ronald Vance"
+                      className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#005c65]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">Appointment Type</label>
+                      <select className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900">
+                        <option>Scheduled Consult</option>
+                        <option>Follow-up Suture Removal</option>
+                        <option>Diagnostics / CT Scan</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">Assign Room</label>
+                      <select className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900">
+                        <option>Suite 101 - Dr. Vance</option>
+                        <option>Suite 204 - Dr. Rostova</option>
+                        <option>Operatory 3 - Dr. Patel</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                    <button
+                      onClick={() => setCheckInModalOpen(false)}
+                      className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-semibold"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        setCheckInModalOpen(false);
+                        onNotify?.('Check-In Completed', 'Token generated and sent to SMS + Lobby Board', 'triage');
+                      }}
+                      className="px-5 py-2 bg-[#005c65] text-white rounded-lg text-sm font-semibold hover:bg-[#007782]"
+                    >
+                      Confirm &amp; Issue Token
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL: Issue Visitor RFID */}
       <AnimatePresence>
         {visitorModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setVisitorModalOpen(false)}
-              className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
-            />
+          <ModalPortal>
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setVisitorModalOpen(false)}
+                className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+              />
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -1072,72 +1102,75 @@ export const Reception: React.FC<ReceptionProps> = ({ onNotify, onOpenPowerBI, o
               </form>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL: Emergency Walk-In Trigger */}
       <AnimatePresence>
         {emergencyModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setEmergencyModalOpen(false)}
-              className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative z-10 bg-white rounded-2xl shadow-2xl border border-red-200 w-full max-w-md p-6 overflow-hidden"
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-red-100">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-lg bg-red-100 text-red-700 flex items-center justify-center">
-                    <BadgeAlert className="w-5 h-5" />
+          <ModalPortal>
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setEmergencyModalOpen(false)}
+                className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 15 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 15 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative z-10 bg-white rounded-2xl shadow-2xl border border-red-200 w-full max-w-md p-6 overflow-hidden"
+              >
+                <div className="flex items-center justify-between pb-3 border-b border-red-100">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-lg bg-red-100 text-red-700 flex items-center justify-center">
+                      <BadgeAlert className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-red-900">Emergency Walk-In Intake</h3>
+                      <p className="text-xs text-red-600">Immediate bypass of standard queue</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-red-900">Emergency Walk-In Intake</h3>
-                    <p className="text-xs text-red-600">Immediate bypass of standard queue</p>
+                  <button
+                    onClick={() => setEmergencyModalOpen(false)}
+                    className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="py-4 space-y-3">
+                  <p className="text-sm text-slate-700">
+                    Are you dispatching an emergency patient intake? This will generate a <strong>STAT Red Priority Token</strong> and immediately notify Trauma Bay 1.
+                  </p>
+                  <div className="p-3 bg-red-50 text-red-800 rounded-lg text-xs">
+                    <strong>Trauma Protocol:</strong> Immediate clinician notification, bypass copay settlement, auto-prepare airway and suction station.
                   </div>
                 </div>
-                <button
-                  onClick={() => setEmergencyModalOpen(false)}
-                  className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
 
-              <div className="py-4 space-y-3">
-                <p className="text-sm text-slate-700">
-                  Are you dispatching an emergency patient intake? This will generate a <strong>STAT Red Priority Token</strong> and immediately notify Trauma Bay 1.
-                </p>
-                <div className="p-3 bg-red-50 text-red-800 rounded-lg text-xs">
-                  <strong>Trauma Protocol:</strong> Immediate clinician notification, bypass copay settlement, auto-prepare airway and suction station.
+                <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                  <button
+                    onClick={() => setEmergencyModalOpen(false)}
+                    className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleEmergencyWalkIn}
+                    className="px-5 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 shadow-md shadow-red-500/20"
+                  >
+                    Dispatch STAT Emergency Intake
+                  </button>
                 </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <button
-                  onClick={() => setEmergencyModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleEmergencyWalkIn}
-                  className="px-5 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 shadow-md shadow-red-500/20"
-                >
-                  Dispatch STAT Emergency Intake
-                </button>
-              </div>
-            </motion.div>
-          </div>
+              </motion.div>
+            </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
     </div>

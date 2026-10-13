@@ -12,6 +12,8 @@ import {
   Sparkles,
   Zap
 } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { ModalPortal } from './ModalPortal';
 
 interface PowerBIModalProps {
   isOpen: boolean;
@@ -20,6 +22,9 @@ interface PowerBIModalProps {
 }
 
 export default function PowerBIModal({ isOpen, onClose }: PowerBIModalProps) {
+  // Prevent background window from scrolling when modal is open
+  useBodyScrollLock(isOpen);
+
   const [selectedRange, setSelectedRange] = useState<'24h' | '7d' | '30d' | 'ytd'>('24h');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -54,7 +59,8 @@ export default function PowerBIModal({ isOpen, onClose }: PowerBIModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+        <ModalPortal>
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
           {/* Animated Backdrop with Click-Outside to Close */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -298,6 +304,7 @@ export default function PowerBIModal({ isOpen, onClose }: PowerBIModalProps) {
           </div>
         </motion.div>
         </div>
+        </ModalPortal>
       )}
     </AnimatePresence>
   );

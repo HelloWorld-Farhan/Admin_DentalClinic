@@ -19,6 +19,7 @@ import {
   Briefcase,
   Check,
   Headphones,
+  Sparkles,
 } from 'lucide-react';
 
 interface LoginProps {
@@ -80,10 +81,10 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify }
     }
     onNotify?.(
       'Staff Credential Registered',
-      `Practitioner application for ${practitionerName || 'Dr. Practitioner'} queued for Chief Medical Officer approval.`,
-      'triage'
+      `Practitioner account for ${practitionerName || 'Dr. Clinical Specialist'} created. Welcome to Smile Clinic Admin.`,
+      'system'
     );
-    setTab('signin');
+    navigate('/dashboard');
   };
 
   return (
@@ -474,13 +475,29 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify }
                       </div>
                     </div>
 
-                    <div className="pt-2">
+                    <div className="pt-2 space-y-2">
                       <button
                         type="submit"
                         className="w-full py-3 px-6 bg-[#005c65] hover:bg-[#007782] transition-colors text-white font-semibold text-sm rounded-lg shadow-md shadow-[#005c65]/20 flex items-center justify-center space-x-2"
                       >
                         <Lock className="w-4 h-4" />
                         <span>Authorize &amp; Sign In</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onNotify?.(
+                            'Institutional Demo Active',
+                            'Welcome Dr. Sneha Lal, MD (Chief Clinical Admin). Entering dashboard...',
+                            'system'
+                          );
+                          navigate('/dashboard');
+                        }}
+                        className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 font-semibold text-xs rounded-lg flex items-center justify-center space-x-1.5"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Quick Demo Access &rarr; Open Dashboard Directly</span>
                       </button>
                     </div>
                   </form>

@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { mockPatientsEHR, mockDoctors } from '../data/mockData';
 import { PatientEHR, AcuityLevel } from '../types';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { ModalPortal } from '../components/ModalPortal';
 
 interface PatientsProps {
   onNotify?: (title: string, message: string, type: 'critical' | 'financial' | 'triage' | 'system') => void;
@@ -46,6 +48,10 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
   const [dischargeModalOpen, setDischargeModalOpen] = useState(false);
   const [vitalsModalOpen, setVitalsModalOpen] = useState(false);
   const [rxModalOpen, setRxModalOpen] = useState(false);
+
+  // Freeze background window scrolling when ANY patient modal is open
+  const isAnyModalOpen = Boolean(admissionModalOpen || transferModalOpen || dischargeModalOpen || vitalsModalOpen || rxModalOpen);
+  useBodyScrollLock(isAnyModalOpen);
 
   // Form states
   const [newAdmission, setNewAdmission] = useState({
@@ -890,15 +896,16 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
       {/* MODAL 1: New Patient Admission */}
       <AnimatePresence>
         {admissionModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setAdmissionModalOpen(false)}
-              className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
-            />
+          <ModalPortal>
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setAdmissionModalOpen(false)}
+                className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+              />
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -1077,21 +1084,23 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
               </form>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL 2: Inter-Ward Bed Transfer */}
       <AnimatePresence>
         {transferModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setTransferModalOpen(false)}
-              className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
-            />
+          <ModalPortal>
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setTransferModalOpen(false)}
+                className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+              />
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -1184,21 +1193,23 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
               </form>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL 3: Generate Discharge Summary */}
       <AnimatePresence>
         {dischargeModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setDischargeModalOpen(false)}
-              className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
-            />
+          <ModalPortal>
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setDischargeModalOpen(false)}
+                className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+              />
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -1287,21 +1298,23 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
               </form>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL 4: Continuous Vitals Telemetry Inspection */}
       <AnimatePresence>
         {vitalsModalOpen && selectedPatient && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setVitalsModalOpen(false)}
-              className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
-            />
+          <ModalPortal>
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setVitalsModalOpen(false)}
+                className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+              />
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -1381,21 +1394,23 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
               </div>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL 5: Medication Prescriptions */}
       <AnimatePresence>
         {rxModalOpen && selectedPatient && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setRxModalOpen(false)}
-              className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
-            />
+          <ModalPortal>
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setRxModalOpen(false)}
+                className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+              />
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -1469,6 +1484,7 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
               </div>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
     </div>

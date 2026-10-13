@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { mockBillingClaims } from '../data/mockData';
 import { BillingClaim, ClaimStatus } from '../types';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { ModalPortal } from '../components/ModalPortal';
 
 interface BillingProps {
   onNotify?: (title: string, message: string, type: 'critical' | 'financial' | 'triage' | 'system') => void;
@@ -39,6 +41,10 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [batchEdiModalOpen, setBatchEdiModalOpen] = useState(false);
   const [superbillModalOpen, setSuperbillModalOpen] = useState(false);
+
+  // Freeze background scrolling when any billing modal is open
+  const isAnyModalOpen = Boolean(invoiceModalOpen || batchEdiModalOpen || superbillModalOpen);
+  useBodyScrollLock(isAnyModalOpen);
 
   // New Invoice Form
   const [newInvoice, setNewInvoice] = useState({
@@ -552,19 +558,27 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
 
             {/* Segmented Filter Pills */}
             <div className="hidden sm:flex items-center bg-slate-100 p-1 rounded-lg">
-              {(['ALL', 'Processing', 'Approved', 'Denied'] as const).map((st) => (
-                <button
-                  key={st}
-                  onClick={() => setStatusFilter(st)}
-                  className={`px-3 py-1 text-xs rounded-md transition-all ${
-                    statusFilter === st
-                      ? 'bg-white text-slate-900 font-bold shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {st === 'ALL' ? 'All (142)' : st}
-                </button>
-              ))}
+              {(['ALL', 'Processing', 'Approved', 'Pending Docs', 'Denied'] as const).map((st) => {
+                const count = st === 'ALL' ? claims.length : claims.filter((c) => c.status === st).length;
+                return (
+                  <button
+                    key={st}
+                    onClick={() => setStatusFilter(st)}
+                    className={`px-3 py-1 text-xs rounded-md transition-all flex items-center gap-1.5 ${
+                      statusFilter === st
+                        ? 'bg-white text-slate-900 font-bold shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>{st === 'ALL' ? 'All' : st}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      statusFilter === st ? 'bg-[#005c65]/10 text-[#005c65]' : 'bg-slate-200/80 text-slate-500'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -594,12 +608,32 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {filteredClaims.map((claim) => {
-                const isSelected = selectedClaim?.id === claim.id;
-                return (
-                  <tr
-                    key={claim.id}
-                    onClick={() => setSelectedClaim(claim)}
+              {filteredClaims.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <CreditCard className="w-10 h-10 text-slate-300" />
+                      <p className="text-sm font-bold text-slate-700">No claims match the filter criteria</p>
+                      <p className="text-xs text-slate-400">Try clearing your search or selecting &ldquo;All&rdquo; claims</p>
+                      <button
+                        onClick={() => {
+                          setStatusFilter('ALL');
+                          setSearchQuery('');
+                        }}
+                        className="mt-2 px-3 py-1.5 bg-[#005c65] text-white rounded-lg text-xs font-semibold"
+                      >
+                        Reset All Filters
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredClaims.map((claim) => {
+                  const isSelected = selectedClaim?.id === claim.id;
+                  return (
+                    <tr
+                      key={claim.id}
+                      onClick={() => setSelectedClaim(claim)}
                     className={`hover:bg-slate-50/80 transition-colors cursor-pointer ${
                       isSelected ? 'bg-teal-50/60 dark:bg-teal-950/20' : ''
                     }`}
@@ -672,7 +706,7 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>
@@ -687,15 +721,16 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
       {/* MODAL 1: Create New Invoice */}
       <AnimatePresence>
         {invoiceModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setInvoiceModalOpen(false)}
-              className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
-            />
+          <ModalPortal>
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setInvoiceModalOpen(false)}
+                className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+              />
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -804,21 +839,23 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
               </form>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL 2: Batch EDI 837 Submission */}
       <AnimatePresence>
         {batchEdiModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setBatchEdiModalOpen(false)}
-              className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
-            />
+          <ModalPortal>
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setBatchEdiModalOpen(false)}
+                className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+              />
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -885,21 +922,23 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
               </div>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL 3: View Superbill */}
       <AnimatePresence>
         {superbillModalOpen && selectedClaim && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setSuperbillModalOpen(false)}
-              className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
-            />
+          <ModalPortal>
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setSuperbillModalOpen(false)}
+                className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+              />
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -970,6 +1009,7 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
               </div>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
     </div>

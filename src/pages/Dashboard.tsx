@@ -30,6 +30,8 @@ import {
   mockTriageQueue, 
   mockDepartmentMetrics 
 } from '../data/mockData';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { ModalPortal } from '../components/ModalPortal';
 
 interface DashboardProps {
   onNotify?: (title: string, message: string, type: 'critical' | 'financial' | 'triage' | 'system') => void;
@@ -49,6 +51,9 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [selectedSuiteDetail, setSelectedSuiteDetail] = useState<any>(null);
+
+  // Freeze background window and prevent interaction when popup is open
+  useBodyScrollLock(Boolean(broadcastModalOpen || selectedSuiteDetail));
 
   const handleBroadcast = (e: React.FormEvent) => {
     e.preventDefault();
@@ -544,132 +549,144 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
       {/* Emergency Broadcast Modal */}
       <AnimatePresence>
         {broadcastModalOpen && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-red-200"
+          <ModalPortal>
+            <div 
+              onClick={() => setBroadcastModalOpen(false)}
+              className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm"
             >
-              <div className="p-4 bg-red-600 text-white flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-amber-300" />
-                  <h3 className="font-bold text-sm">Broadcast Emergency Clinical Alert</h3>
-                </div>
-                <button onClick={() => setBroadcastModalOpen(false)} className="text-white/80 hover:text-white">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleBroadcast} className="p-5 space-y-4">
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  This message will instantly broadcast across all clinic screens, nursing stations, and operatory displays.
-                </p>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Emergency Message Text</label>
-                  <textarea
-                    rows={3}
-                    required
-                    value={broadcastMessage}
-                    onChange={(e) => setBroadcastMessage(e.target.value)}
-                    placeholder="E.g., Trauma team code yellow in Operatory 1. All available oral surgeons report to Main Pavilion."
-                    className="w-full p-3 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setBroadcastModalOpen(false)}
-                    className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl shadow-md transition-colors"
-                  >
-                    Send Urgent Broadcast
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-red-200 relative z-10"
+              >
+                <div className="p-4 bg-red-600 text-white flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-amber-300" />
+                    <h3 className="font-bold text-sm">Broadcast Emergency Clinical Alert</h3>
+                  </div>
+                  <button onClick={() => setBroadcastModalOpen(false)} className="text-white/80 hover:text-white">
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
-              </form>
-            </motion.div>
-          </div>
+
+                <form onSubmit={handleBroadcast} className="p-5 space-y-4">
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    This message will instantly broadcast across all clinic screens, nursing stations, and operatory displays.
+                  </p>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Emergency Message Text</label>
+                    <textarea
+                      rows={3}
+                      required
+                      value={broadcastMessage}
+                      onChange={(e) => setBroadcastMessage(e.target.value)}
+                      placeholder="E.g., Trauma team code yellow in Operatory 1. All available oral surgeons report to Main Pavilion."
+                      className="w-full p-3 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setBroadcastModalOpen(false)}
+                      className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl shadow-md transition-colors"
+                    >
+                      Send Urgent Broadcast
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* Suite Detail Drawer Modal */}
       <AnimatePresence>
         {selectedSuiteDetail && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200"
+          <ModalPortal>
+            <div 
+              onClick={() => setSelectedSuiteDetail(null)}
+              className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm"
             >
-              <div className="p-5 bg-gradient-to-r from-primary to-primary-container text-white flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-on-primary-container block">
-                    {selectedSuiteDetail.suiteNumber} Inspection
-                  </span>
-                  <h3 className="font-bold text-base">{selectedSuiteDetail.suiteName}</h3>
-                </div>
-                <button onClick={() => setSelectedSuiteDetail(null)} className="text-white/80 hover:text-white">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="p-5 space-y-4 text-xs">
-                <div className="p-3 bg-slate-50 rounded-xl space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Current Procedure:</span>
-                    <span className="font-bold text-slate-900">{selectedSuiteDetail.currentProcedure}</span>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 relative z-10"
+              >
+                <div className="p-5 bg-gradient-to-r from-primary to-primary-container text-white flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-on-primary-container block">
+                      {selectedSuiteDetail.suiteNumber} Inspection
+                    </span>
+                    <h3 className="font-bold text-base">{selectedSuiteDetail.suiteName}</h3>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Primary Surgeon:</span>
-                    <span className="font-bold text-primary">{selectedSuiteDetail.primarySurgeon}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Assisting Team:</span>
-                    <span className="text-slate-700">{selectedSuiteDetail.assistingStaff}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Schedule Window:</span>
-                    <span className="font-semibold text-slate-800">{selectedSuiteDetail.startTime} – {selectedSuiteDetail.estimatedEnd}</span>
-                  </div>
+                  <button onClick={() => setSelectedSuiteDetail(null)} className="text-white/80 hover:text-white">
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
 
-                <div>
-                  <div className="flex justify-between text-[11px] font-semibold text-slate-500 mb-1">
-                    <span>Surgical Stage Completion</span>
-                    <span>{selectedSuiteDetail.progressPercent}%</span>
+                <div className="p-5 space-y-4 text-xs">
+                  <div className="p-3 bg-slate-50 rounded-xl space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Current Procedure:</span>
+                      <span className="font-bold text-slate-900">{selectedSuiteDetail.currentProcedure}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Primary Surgeon:</span>
+                      <span className="font-bold text-primary">{selectedSuiteDetail.primarySurgeon}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Assisting Team:</span>
+                      <span className="text-slate-700">{selectedSuiteDetail.assistingStaff}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Schedule Window:</span>
+                      <span className="font-semibold text-slate-800">{selectedSuiteDetail.startTime} – {selectedSuiteDetail.estimatedEnd}</span>
+                    </div>
                   </div>
-                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-primary h-full rounded-full transition-all duration-500" 
-                      style={{ width: `${selectedSuiteDetail.progressPercent}%` }}
-                    />
+
+                  <div>
+                    <div className="flex justify-between text-[11px] font-semibold text-slate-500 mb-1">
+                      <span>Surgical Stage Completion</span>
+                      <span>{selectedSuiteDetail.progressPercent}%</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-primary h-full rounded-full transition-all duration-500" 
+                        style={{ width: `${selectedSuiteDetail.progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-sky-50 rounded-xl border border-sky-100 text-sky-900">
+                    <span className="font-bold block text-[11px]">Upcoming Turnover Protocol:</span>
+                    <p className="text-[11px] mt-0.5 text-sky-800">{selectedSuiteDetail.nextCase}</p>
                   </div>
                 </div>
 
-                <div className="p-3 bg-sky-50 rounded-xl border border-sky-100 text-sky-900">
-                  <span className="font-bold block text-[11px]">Upcoming Turnover Protocol:</span>
-                  <p className="text-[11px] mt-0.5 text-sky-800">{selectedSuiteDetail.nextCase}</p>
+                <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+                  <button
+                    onClick={() => setSelectedSuiteDetail(null)}
+                    className="px-4 py-2 bg-slate-200 text-slate-800 rounded-xl text-xs font-semibold"
+                  >
+                    Close Window
+                  </button>
                 </div>
-              </div>
-
-              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
-                <button
-                  onClick={() => setSelectedSuiteDetail(null)}
-                  className="px-4 py-2 bg-slate-200 text-slate-800 rounded-xl text-xs font-semibold"
-                >
-                  Close Window
-                </button>
-              </div>
-            </motion.div>
-          </div>
+              </motion.div>
+            </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
     </div>

@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { mockLabOrders, mockDoctors } from '../data/mockData';
 import { LabOrder, LabPriority, LabStatus } from '../types';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { ModalPortal } from '../components/ModalPortal';
 
 interface LaboratoryProps {
   onNotify?: (title: string, message: string, type: 'critical' | 'financial' | 'triage' | 'system') => void;
@@ -37,6 +39,10 @@ export const Laboratory: React.FC<LaboratoryProps> = ({ onNotify, onOpenPowerBI,
   const [newSpecimenModalOpen, setNewSpecimenModalOpen] = useState(false);
   const [statBroadcastModalOpen, setStatBroadcastModalOpen] = useState(false);
   const [signOffModalOpen, setSignOffModalOpen] = useState(false);
+
+  // Freeze background window scrolling when ANY laboratory modal is open
+  const isAnyModalOpen = Boolean(newSpecimenModalOpen || statBroadcastModalOpen || signOffModalOpen);
+  useBodyScrollLock(isAnyModalOpen);
 
   // New Specimen Form
   const [newSpecimen, setNewSpecimen] = useState({
@@ -454,19 +460,35 @@ export const Laboratory: React.FC<LaboratoryProps> = ({ onNotify, onOpenPowerBI,
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-base font-bold text-slate-900 mr-2">Active Specimen Worklist</span>
             <div className="flex items-center bg-slate-100 p-1 rounded-lg">
-              {(['All', 'STAT', 'Pathology', 'Critical'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
-                    activeTab === tab
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
+              {(['All', 'STAT', 'Pathology', 'Critical'] as const).map((tab) => {
+                const count =
+                  tab === 'All'
+                    ? orders.length
+                    : tab === 'STAT'
+                    ? orders.filter((o) => o.priority === 'Stat').length
+                    : tab === 'Pathology'
+                    ? orders.filter((o) => o.testName.toLowerCase().includes('biopsy')).length
+                    : orders.filter((o) => o.criticalFlag).length;
+
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                      activeTab === tab
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>{tab}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      activeTab === tab ? 'bg-[#005c65]/10 text-[#005c65]' : 'bg-slate-200/80 text-slate-500'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -484,7 +506,23 @@ export const Laboratory: React.FC<LaboratoryProps> = ({ onNotify, onOpenPowerBI,
 
         {/* Specimen Queue Cards */}
         <div className="flex flex-col gap-3">
-          {filteredOrders.map((order) => {
+          {filteredOrders.length === 0 ? (
+            <div className="py-12 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <FlaskConical className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm font-bold text-slate-700">No laboratory specimens found</p>
+              <p className="text-xs text-slate-400 mt-1">No orders match the selected category &ldquo;{activeTab}&rdquo; or search query</p>
+              <button
+                onClick={() => {
+                  setActiveTab('All');
+                  setSearchQuery('');
+                }}
+                className="mt-3 px-3.5 py-1.5 bg-[#005c65] text-white rounded-lg text-xs font-semibold"
+              >
+                Reset All Filters
+              </button>
+            </div>
+          ) : (
+            filteredOrders.map((order) => {
             const isStat = order.priority === 'Stat';
             return (
               <div
@@ -595,22 +633,23 @@ export const Laboratory: React.FC<LaboratoryProps> = ({ onNotify, onOpenPowerBI,
                 </div>
               </div>
             );
-          })}
+          }))}
         </div>
       </div>
 
       {/* MODAL 1: Log New Specimen */}
       <AnimatePresence>
         {newSpecimenModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setNewSpecimenModalOpen(false)}
-              className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
-            />
+          <ModalPortal>
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setNewSpecimenModalOpen(false)}
+                className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+              />
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -717,21 +756,23 @@ export const Laboratory: React.FC<LaboratoryProps> = ({ onNotify, onOpenPowerBI,
               </form>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL 2: STAT Results Broadcast */}
       <AnimatePresence>
         {statBroadcastModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setStatBroadcastModalOpen(false)}
-              className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
-            />
+          <ModalPortal>
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setStatBroadcastModalOpen(false)}
+                className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+              />
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -790,80 +831,83 @@ export const Laboratory: React.FC<LaboratoryProps> = ({ onNotify, onOpenPowerBI,
               </div>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* MODAL 3: Pathology Sign-Off */}
       <AnimatePresence>
         {signOffModalOpen && selectedOrder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setSignOffModalOpen(false)}
-              className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative z-10 bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-lg p-6 overflow-hidden"
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-lg bg-teal-50 text-[#005c65] flex items-center justify-center">
-                    <CheckCircle2 className="w-5 h-5" />
+          <ModalPortal>
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setSignOffModalOpen(false)}
+                className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 15 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 15 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative z-10 bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-lg p-6 overflow-hidden"
+              >
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-lg bg-teal-50 text-[#005c65] flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">Sign-Off Diagnostic Pathology Report</h3>
+                      <p className="text-xs text-slate-500">{selectedOrder.orderNumber} • {selectedOrder.patientName}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">Sign-Off Diagnostic Pathology Report</h3>
-                    <p className="text-xs text-slate-500">{selectedOrder.orderNumber} • {selectedOrder.patientName}</p>
+                  <button
+                    onClick={() => setSignOffModalOpen(false)}
+                    className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="py-4 space-y-3">
+                  <div className="p-3 bg-slate-50 rounded-lg space-y-2 text-xs">
+                    <div className="flex justify-between border-b border-slate-200 pb-1">
+                      <span className="text-slate-500 font-semibold">Test Panel:</span>
+                      <span className="font-semibold text-slate-900">{selectedOrder.testName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Analyzer Value:</span>
+                      <span className="font-bold text-slate-900">{selectedOrder.resultValue || '98.4% Normal range'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Sign-Off Pathologist:</span>
+                      <span className="font-semibold text-slate-800">Dr. Sneha Lal, MD (Chief Clinical Admin)</span>
+                    </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => setSignOffModalOpen(false)}
-                  className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
 
-              <div className="py-4 space-y-3">
-                <div className="p-3 bg-slate-50 rounded-lg space-y-2 text-xs">
-                  <div className="flex justify-between border-b border-slate-200 pb-1">
-                    <span className="text-slate-500 font-semibold">Test Panel:</span>
-                    <span className="font-semibold text-slate-900">{selectedOrder.testName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Analyzer Value:</span>
-                    <span className="font-bold text-slate-900">{selectedOrder.resultValue || '98.4% Normal range'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Sign-Off Pathologist:</span>
-                    <span className="font-semibold text-slate-800">Dr. Sneha Lal, MD (Chief Clinical Admin)</span>
-                  </div>
+                <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                  <button
+                    onClick={() => setSignOffModalOpen(false)}
+                    className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSignOffSubmit}
+                    className="px-5 py-2 bg-[#005c65] text-white rounded-lg text-sm font-semibold hover:bg-[#007782]"
+                  >
+                    Affix Electronic Signature &amp; Release
+                  </button>
                 </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <button
-                  onClick={() => setSignOffModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSignOffSubmit}
-                  className="px-5 py-2 bg-[#005c65] text-white rounded-lg text-sm font-semibold hover:bg-[#007782]"
-                >
-                  Affix Electronic Signature &amp; Release
-                </button>
-              </div>
-            </motion.div>
-          </div>
+              </motion.div>
+            </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
     </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -16,10 +16,13 @@ import {
   X, 
   Activity, 
   ShieldCheck, 
-  Sparkles 
+  Sparkles,
+  RotateCcw
 } from 'lucide-react';
 import { mockDoctors, mockORSuites } from '../data/mockData';
 import { Doctor } from '../types';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { ModalPortal } from '../components/ModalPortal';
 
 interface DoctorsProps {
   onNotify?: (title: string, message: string, type: 'critical' | 'financial' | 'triage' | 'system') => void;
@@ -39,26 +42,50 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
   // Modals
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [newDoctorModalOpen, setNewDoctorModalOpen] = useState(false);
-  
-  // New doctor form state
-  const [newDoctorForm, setNewDoctorForm] = useState({
-    name: '',
-    specialty: 'Oral & Maxillofacial Surgery',
-    npi: '',
-    room: 'Operatory 1',
-    shift: '08:00 – 16:30',
-    email: '',
-    phone: '',
-  });
 
-  const filteredDoctors = doctorsList.filter((doc) => {
-    const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          doc.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          doc.npi.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || doc.status === statusFilter;
-    const matchesSpecialty = specialtyFilter === 'All Specialties' || doc.specialty === specialtyFilter;
-    return matchesSearch && matchesStatus && matchesSpecialty;
-  });
+  // Freeze background window scrolling when ANY popup or modal is open
+  const isAnyModalOpen = Boolean(scheduleModalOpen || newDoctorModalOpen || selectedDoctor);
+  useBodyScrollLock(isAnyModalOpen);
+  
+  // Dynamically compute unique specialties from all registered doctors
+  const uniqueSpecialties = useMemo(() => {
+    const list = Array.from(new Set(doctorsList.map((d) => d.specialty))).sort();
+    return ['All Specialties', ...list];
+  }, [doctorsList]);
+
+  // Dynamic status count tabs
+  const statusCounts = useMemo(() => {
+    return {
+      All: doctorsList.length,
+      'On Duty': doctorsList.filter((d) => d.status === 'On Duty').length,
+      'In Surgery': doctorsList.filter((d) => d.status === 'In Surgery').length,
+      'On Rounds': doctorsList.filter((d) => d.status === 'On Rounds').length,
+      'Off Duty': doctorsList.filter((d) => d.status === 'Off Duty').length,
+    };
+  }, [doctorsList]);
+
+  const filteredDoctors = useMemo(() => {
+    return doctorsList.filter((doc) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch = !q ||
+                            doc.name.toLowerCase().includes(q) ||
+                            doc.specialty.toLowerCase().includes(q) ||
+                            doc.npi.toLowerCase().includes(q) ||
+                            doc.room.toLowerCase().includes(q) ||
+                            doc.title.toLowerCase().includes(q);
+      const matchesStatus = statusFilter === 'All' || doc.status === statusFilter;
+      const matchesSpecialty = specialtyFilter === 'All Specialties' || doc.specialty === specialtyFilter;
+      return matchesSearch && matchesStatus && matchesSpecialty;
+    });
+  }, [doctorsList, searchQuery, statusFilter, specialtyFilter]);
+
+  const hasActiveFilters = statusFilter !== 'All' || specialtyFilter !== 'All Specialties' || searchQuery.trim() !== '';
+
+  const handleResetFilters = () => {
+    setStatusFilter('All');
+    setSpecialtyFilter('All Specialties');
+    setSearchQuery('');
+  };
 
   const handleCreateDoctor = (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,50 +233,103 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
       </div>
 
       {/* Directory Filter & Search Bar */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-        {/* Status Pill Filters */}
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold overflow-x-auto w-full sm:w-auto">
-          {(['All', 'On Duty', 'In Surgery', 'On Rounds', 'Off Duty'] as const).map((status) => (
-            <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-                statusFilter === status
-                  ? 'bg-white dark:bg-slate-900 text-primary font-bold shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* Status Pill Filters with Dynamic Counters */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold overflow-x-auto w-full sm:w-auto">
+            {(['All', 'On Duty', 'In Surgery', 'On Rounds', 'Off Duty'] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                  statusFilter === status
+                    ? 'bg-white dark:bg-slate-900 text-primary font-bold shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                <span>{status}</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  statusFilter === status ? 'bg-primary/10 text-primary' : 'bg-slate-200/80 text-slate-500'
+                }`}>
+                  {statusCounts[status]}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Specialty Select & Search */}
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            <select
+              value={specialtyFilter}
+              onChange={(e) => setSpecialtyFilter(e.target.value)}
+              className="pl-3 pr-7 py-1.5 bg-slate-100 rounded-xl text-xs font-semibold text-slate-700 border-none focus:ring-2 focus:ring-primary cursor-pointer max-w-[210px]"
             >
-              {status}
-            </button>
-          ))}
+              {uniqueSpecialties.map((spec) => (
+                <option key={spec} value={spec}>
+                  {spec}
+                </option>
+              ))}
+            </select>
+
+            <div className="relative flex-1 sm:w-64">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name, NPI, specialty..."
+                className="w-full pl-8 pr-3 py-1.5 bg-slate-100 focus:bg-white rounded-xl text-xs text-slate-900 border border-transparent focus:border-primary/40 focus:outline-none transition-all"
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Specialty Select & Search */}
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
-          <select
-            value={specialtyFilter}
-            onChange={(e) => setSpecialtyFilter(e.target.value)}
-            className="pl-3 pr-7 py-1.5 bg-slate-100 rounded-xl text-xs font-semibold text-slate-700 border-none focus:ring-2 focus:ring-primary cursor-pointer"
-          >
-            <option>All Specialties</option>
-            <option>Oral &amp; Maxillofacial Surgery</option>
-            <option>Endodontics &amp; Micro-Surgery</option>
-            <option>Orthognathic &amp; Craniofacial</option>
-            <option>Pediatric Dentistry</option>
-            <option>Periodontics &amp; Implant Surgery</option>
-            <option>Restorative &amp; Prosthodontics</option>
-          </select>
+        {/* Dynamic Filter Feedback and Active Chips */}
+        <div className="flex flex-wrap items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-800 gap-2">
+          <div className="flex items-center gap-2 flex-wrap text-slate-500">
+            <span>
+              Showing <strong className="text-slate-900 dark:text-white font-bold">{filteredDoctors.length}</strong> of{' '}
+              <strong className="text-slate-900 dark:text-white font-bold">{doctorsList.length}</strong> practitioners
+            </span>
 
-          <div className="relative flex-1 sm:w-64">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, NPI, specialty..."
-              className="w-full pl-8 pr-3 py-1.5 bg-slate-100 focus:bg-white rounded-xl text-xs text-slate-900 border border-transparent focus:border-primary/40 focus:outline-none transition-all"
-            />
+            {/* Active Chips */}
+            {statusFilter !== 'All' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold text-[11px]">
+                Status: {statusFilter}
+                <button onClick={() => setStatusFilter('All')} className="hover:text-primary-container">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {specialtyFilter !== 'All Specialties' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-100 text-[#005c65] font-semibold text-[11px]">
+                Specialty: {specialtyFilter}
+                <button onClick={() => setSpecialtyFilter('All Specialties')} className="hover:text-slate-900">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {searchQuery.trim() !== '' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold text-[11px]">
+                Query: &ldquo;{searchQuery}&rdquo;
+                <button onClick={() => setSearchQuery('')} className="hover:text-slate-900">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
           </div>
+
+          {hasActiveFilters && (
+            <button
+              onClick={handleResetFilters}
+              className="text-primary hover:text-primary-container font-semibold flex items-center gap-1 text-[11px] transition-colors"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Reset Filters</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -270,78 +350,98 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredDoctors.map((doc) => (
-                <tr 
-                  key={doc.id}
-                  className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
-                  onClick={() => setSelectedDoctor(doc)}
-                >
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={doc.avatar}
-                        alt={doc.name}
-                        className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-200 shrink-0"
-                      />
-                      <div>
-                        <span className="font-bold text-slate-900 dark:text-white block">{doc.name}</span>
-                        <span className="text-[10px] text-slate-400 block">{doc.npi}</span>
-                      </div>
+              {filteredDoctors.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <Stethoscope className="w-10 h-10 text-slate-300" />
+                      <p className="text-sm font-bold text-slate-700">No practitioners found</p>
+                      <p className="text-xs text-slate-400">
+                        No doctors match the selected status &ldquo;{statusFilter}&rdquo; or specialty &ldquo;{specialtyFilter}&rdquo;.
+                      </p>
+                      <button
+                        onClick={handleResetFilters}
+                        className="mt-2 px-3.5 py-1.5 bg-primary hover:bg-primary-container text-white text-xs font-semibold rounded-lg shadow-sm transition-all"
+                      >
+                        Reset All Filters
+                      </button>
                     </div>
-                  </td>
-
-                  <td className="py-3 px-4">
-                    <span className="font-semibold text-slate-800 dark:text-slate-200 block">{doc.specialty}</span>
-                    <span className="text-[10px] text-slate-400 block">{doc.title}</span>
-                  </td>
-
-                  <td className="py-3 px-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      doc.status === 'On Duty'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : doc.status === 'In Surgery'
-                        ? 'bg-amber-100 text-amber-800'
-                        : doc.status === 'On Rounds'
-                        ? 'bg-sky-100 text-sky-800'
-                        : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${
-                        doc.status === 'On Duty' ? 'bg-emerald-500' : doc.status === 'In Surgery' ? 'bg-amber-500 animate-pulse' : 'bg-slate-400'
-                      }`} />
-                      {doc.status}
-                    </span>
-                  </td>
-
-                  <td className="py-3 px-4 font-medium text-slate-700 dark:text-slate-300">
-                    {doc.room}
-                  </td>
-
-                  <td className="py-3 px-4">
-                    <span className="font-bold text-slate-900 dark:text-white">{doc.activePatients}</span>
-                    <span className="text-slate-400 ml-1">in queue</span>
-                  </td>
-
-                  <td className="py-3 px-4 text-slate-600 dark:text-slate-400 font-medium">
-                    {doc.shift}
-                  </td>
-
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-1 text-amber-500 font-bold">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      <span>{doc.rating}</span>
-                    </div>
-                  </td>
-
-                  <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => setSelectedDoctor(doc)}
-                      className="px-2.5 py-1 text-primary hover:bg-primary/10 rounded-lg font-semibold text-xs transition-colors"
-                    >
-                      Inspect Profile
-                    </button>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredDoctors.map((doc) => (
+                  <tr 
+                    key={doc.id}
+                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
+                    onClick={() => setSelectedDoctor(doc)}
+                  >
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={doc.avatar}
+                          alt={doc.name}
+                          className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-200 shrink-0"
+                        />
+                        <div>
+                          <span className="font-bold text-slate-900 dark:text-white block group-hover:text-primary transition-colors">{doc.name}</span>
+                          <span className="text-[10px] text-slate-400 block font-mono">{doc.npi}</span>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="py-3 px-4">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 block">{doc.specialty}</span>
+                      <span className="text-[10px] text-slate-400 block">{doc.title}</span>
+                    </td>
+
+                    <td className="py-3 px-4">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                        doc.status === 'On Duty'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : doc.status === 'In Surgery'
+                          ? 'bg-amber-100 text-amber-800'
+                          : doc.status === 'On Rounds'
+                          ? 'bg-sky-100 text-sky-800'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          doc.status === 'On Duty' ? 'bg-emerald-500' : doc.status === 'In Surgery' ? 'bg-amber-500 animate-pulse' : 'bg-slate-400'
+                        }`} />
+                        {doc.status}
+                      </span>
+                    </td>
+
+                    <td className="py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">
+                      {doc.room}
+                    </td>
+
+                    <td className="py-3 px-4">
+                      <span className="font-bold text-slate-900 dark:text-white">{doc.activePatients}</span>
+                      <span className="text-slate-400 ml-1">in queue</span>
+                    </td>
+
+                    <td className="py-3 px-4 text-slate-600 dark:text-slate-400 font-medium">
+                      {doc.shift}
+                    </td>
+
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-1 text-amber-500 font-bold">
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                        <span>{doc.rating}</span>
+                      </div>
+                    </td>
+
+                    <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setSelectedDoctor(doc)}
+                        className="px-2.5 py-1 text-primary hover:bg-primary/10 rounded-lg font-semibold text-xs transition-colors"
+                      >
+                        Inspect Profile
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -350,11 +450,16 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
       {/* Doctor Detail Inspection Modal */}
       <AnimatePresence>
         {selectedDoctor && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <ModalPortal>
+            <div 
+              onClick={() => setSelectedDoctor(null)}
+              className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm"
+            >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200"
             >
               <div className="p-6 bg-gradient-to-r from-primary to-primary-container text-white flex items-center justify-between">
@@ -439,17 +544,23 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
               </div>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* New Doctor Modal */}
       <AnimatePresence>
         {newDoctorModalOpen && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <ModalPortal>
+            <div 
+              onClick={() => setNewDoctorModalOpen(false)}
+              className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm"
+            >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200"
             >
               <div className="p-5 bg-gradient-to-r from-primary to-primary-container text-white flex items-center justify-between">
@@ -544,17 +655,23 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
               </form>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* Book OR Suite Modal */}
       <AnimatePresence>
         {scheduleModalOpen && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <ModalPortal>
+            <div 
+              onClick={() => setScheduleModalOpen(false)}
+              className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm"
+            >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200"
             >
               <div className="p-5 bg-gradient-to-r from-primary to-primary-container text-white flex items-center justify-between">
@@ -633,6 +750,7 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
               </form>
             </motion.div>
           </div>
+          </ModalPortal>
         )}
       </AnimatePresence>
     </div>

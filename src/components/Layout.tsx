@@ -28,6 +28,7 @@ import { NotificationItem } from '../types';
 import PowerBIModal from './PowerBIModal';
 import ExportModal from './ExportModal';
 import ToastNotification, { ToastMessage } from './ToastNotification';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export default function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -35,6 +36,10 @@ export default function Layout() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [powerBiOpen, setPowerBiOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+
+  // Lock background window scrolling whenever any popup, drawer, or modal is open
+  useBodyScrollLock(Boolean(mobileMenuOpen || notificationsOpen || profileOpen || powerBiOpen || exportOpen));
+
   const [selectedDept, setSelectedDept] = useState('All Departments');
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'critical' | 'financial' | 'triage'>('all');
   
@@ -308,13 +313,18 @@ export default function Layout() {
               {/* Notification Popover */}
               <AnimatePresence>
                 {notificationsOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                    className="absolute right-0 mt-2.5 w-[340px] sm:w-[420px] bg-white rounded-2xl shadow-2xl shadow-slate-900/15 border border-slate-200/90 overflow-hidden z-50 ring-1 ring-black/5"
-                  >
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40 bg-slate-900/10 cursor-default" 
+                      onClick={() => setNotificationsOpen(false)} 
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                      className="absolute right-0 mt-2.5 w-[340px] sm:w-[420px] bg-white rounded-2xl shadow-2xl shadow-slate-900/15 border border-slate-200/90 overflow-hidden z-50 ring-1 ring-black/5"
+                    >
                     {/* Popover Header */}
                     <div className="p-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
                       <div className="flex items-center justify-between">
@@ -456,6 +466,7 @@ export default function Layout() {
                       </button>
                     </div>
                   </motion.div>
+                  </>
                 )}
               </AnimatePresence>
             </div>
@@ -489,13 +500,18 @@ export default function Layout() {
 
               <AnimatePresence>
                 {profileOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                    className="absolute right-0 mt-2.5 w-64 bg-white rounded-2xl shadow-2xl shadow-slate-900/15 border border-slate-200/90 py-2 z-50 ring-1 ring-black/5"
-                  >
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40 bg-slate-900/10 cursor-default" 
+                      onClick={() => setProfileOpen(false)} 
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                      className="absolute right-0 mt-2.5 w-64 bg-white rounded-2xl shadow-2xl shadow-slate-900/15 border border-slate-200/90 py-2 z-50 ring-1 ring-black/5"
+                    >
                     <div className="px-4 py-3 border-b border-slate-100">
                       <div className="flex items-center gap-3">
                         <img
@@ -557,6 +573,7 @@ export default function Layout() {
                       </button>
                     </div>
                   </motion.div>
+                  </>
                 )}
               </AnimatePresence>
             </div>
@@ -734,10 +751,10 @@ export default function Layout() {
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.22, ease: 'easeOut' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
             >
               <Outlet context={{ showToast, openPowerBi: () => setPowerBiOpen(true), openExport: () => setExportOpen(true) }} />
             </motion.div>
