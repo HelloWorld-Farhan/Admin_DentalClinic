@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Receipt,
@@ -32,6 +33,10 @@ interface BillingProps {
 }
 
 export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpenExport }) => {
+  const outletCtx = useOutletContext<{
+    showToast?: (type: 'success' | 'error' | 'info', title: string, desc?: string) => void;
+  } | null>();
+
   const [claims, setClaims] = useState<BillingClaim[]>(mockBillingClaims);
   const [selectedClaim, setSelectedClaim] = useState<BillingClaim | null>(mockBillingClaims[0]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,10 +51,10 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
   const isAnyModalOpen = Boolean(invoiceModalOpen || batchEdiModalOpen || superbillModalOpen);
   useBodyScrollLock(isAnyModalOpen);
 
-  // New Invoice Form
+  // New Invoice Form with Sensible Defaults so clicking Generate immediately works
   const [newInvoice, setNewInvoice] = useState({
-    patientName: '',
-    mrn: `MRN-${Math.floor(10000 + Math.random() * 90000)}`,
+    patientName: 'Jessica Montgomery',
+    mrn: 'MRN-60117',
     procedureName: 'Full Arch Fixed Restoration (All-on-4)',
     cdtCode: 'D6010, D6058, D6114',
     billedAmount: 4850.0,
@@ -74,19 +79,20 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
 
   const handleCreateInvoice = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newInvoice.patientName.trim()) return;
+    const patientName = newInvoice.patientName.trim() || 'Jessica Montgomery';
+    const mrn = newInvoice.mrn.trim() || `MRN-${Math.floor(10000 + Math.random() * 90000)}`;
 
     const created: BillingClaim = {
       id: `claim-${Date.now()}`,
       claimNumber: `CLM-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-      patientName: newInvoice.patientName,
-      mrn: newInvoice.mrn,
+      patientName,
+      mrn,
       insuranceProvider: newInvoice.insuranceProvider,
       cdtCodes: newInvoice.cdtCode.split(',').map((s) => s.trim()),
-      procedureName: newInvoice.procedureName,
-      billedAmount: Number(newInvoice.billedAmount),
-      insuranceCoverage: Number(newInvoice.insuranceCoverage),
-      patientCopay: Number(newInvoice.patientCopay),
+      procedureName: newInvoice.procedureName || 'Full Arch Fixed Restoration (All-on-4)',
+      billedAmount: Number(newInvoice.billedAmount) || 4850,
+      insuranceCoverage: Number(newInvoice.insuranceCoverage) || 3880,
+      patientCopay: Number(newInvoice.patientCopay) || 970,
       submissionDate: 'Today (Pending Adjudication)',
       status: 'Processing',
       hasRadiographs: true,
@@ -95,6 +101,11 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
     setClaims([created, ...claims]);
     setSelectedClaim(created);
     setInvoiceModalOpen(false);
+    outletCtx?.showToast?.(
+      'success',
+      'Clinical Invoice Formulated',
+      `Claim ${created.claimNumber} generated for ${created.patientName} ($${created.billedAmount.toLocaleString()}) and posted to ledger.`
+    );
     onNotify?.(
       'New Inpatient Invoice Formulated',
       `Claim ${created.claimNumber} generated for ${created.patientName} ($${created.billedAmount.toLocaleString()})`,
@@ -104,6 +115,11 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
 
   const handleBatchEdiSubmit = () => {
     setBatchEdiModalOpen(false);
+    outletCtx?.showToast?.(
+      'success',
+      'EDI 837D Dental Batch Transmitted',
+      '48 claims securely pushed to Change Healthcare Clearinghouse.'
+    );
     onNotify?.(
       'EDI 837D Dental Batch Transmitted',
       '48 claims securely pushed to Change Healthcare Clearinghouse (ANSI ASC X12 Standards)',
@@ -148,7 +164,7 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
         <div>
           <div className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">
             <span>Finance &amp; Operations</span>
-            <span>&bull;</span>
+            <span>•</span>
             <span className="text-[#005c65]">Revenue Cycle Management</span>
           </div>
           <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">

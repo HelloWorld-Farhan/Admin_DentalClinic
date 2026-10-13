@@ -141,7 +141,7 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
                 <ArrowUpRight className="w-3.5 h-3.5" /> 92% Occupancy
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">16 ICU Beds &bull; 4 Recovery Suites</p>
+            <p className="text-[11px] text-slate-500 mt-1">16 ICU Beds • 4 Recovery Suites</p>
           </div>
           <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between text-[11px] text-slate-600">
             <span>Critical Acuity: <b>18</b></span>
@@ -165,7 +165,7 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
               <span className="text-2xl font-bold text-slate-900 dark:text-white">42 <span className="text-sm font-normal text-slate-400">/ 56</span></span>
               <span className="text-xs font-semibold text-sky-600">75% On-Shift</span>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">8 In Surgery &bull; 34 On Rounds &amp; Chairs</p>
+            <p className="text-[11px] text-slate-500 mt-1">8 In Surgery • 34 On Rounds &amp; Chairs</p>
           </div>
           <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between text-[11px] text-slate-600">
             <span>Specialists: <b>28</b></span>
@@ -191,7 +191,7 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
                 <CheckCircle2 className="w-3.5 h-3.5 mr-0.5" /> 310 Done
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">28 In Triage &bull; 74 Pending Seating</p>
+            <p className="text-[11px] text-slate-500 mt-1">28 In Triage • 74 Pending Seating</p>
           </div>
           <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between text-[11px] text-slate-600">
             <span>Avg Wait: <b>8.4 min</b></span>
@@ -448,7 +448,7 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
                   <div>
                     <h4 className="font-bold text-xs text-slate-900 dark:text-white">{suite.currentProcedure}</h4>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      Surgeon: <span className="font-semibold text-slate-700 dark:text-slate-300">{suite.primarySurgeon}</span> &bull; {suite.assistingStaff}
+                      Surgeon: <span className="font-semibold text-slate-700 dark:text-slate-300">{suite.primarySurgeon}</span> • {suite.assistingStaff}
                     </p>
                     <span className="text-[10px] text-slate-400 mt-1 block">
                       Next Case: {suite.nextCase}
@@ -506,11 +506,11 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-xs text-slate-900 dark:text-white">{triage.patientName}</span>
-                        <span className="text-[10px] text-slate-400">({triage.age}y &bull; {triage.gender})</span>
+                        <span className="text-[10px] text-slate-400">({triage.age}y • {triage.gender})</span>
                       </div>
                       <p className="text-[11px] text-slate-600 line-clamp-1 mt-0.5">{triage.chiefComplaint}</p>
                       <span className="text-[10px] text-slate-400 block mt-1">
-                        Doctor: {triage.assignedDoctor} &bull; Room: {triage.assignedRoom}
+                        Doctor: {triage.assignedDoctor} • Room: {triage.assignedRoom}
                       </span>
                     </div>
                   </div>

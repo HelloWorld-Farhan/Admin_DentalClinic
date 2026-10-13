@@ -547,7 +547,7 @@ export const Laboratory: React.FC<LaboratoryProps> = ({ onNotify, onOpenPowerBI,
                     )}
 
                     <span className="font-mono font-semibold text-xs text-[#005c65]">#{order.orderNumber}</span>
-                    <span className="text-slate-300">&bull;</span>
+                    <span className="text-slate-300">•</span>
                     <span className="text-xs text-slate-500">Order: {order.orderTime}</span>
                   </div>
 
@@ -609,7 +609,7 @@ export const Laboratory: React.FC<LaboratoryProps> = ({ onNotify, onOpenPowerBI,
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-slate-500 pt-2">
-                  <span>Assay Line: {order.analyzerId} &bull; TAT: {order.turnaroundTime}</span>
+                  <span>Assay Line: {order.analyzerId} • TAT: {order.turnaroundTime}</span>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={(e) => {

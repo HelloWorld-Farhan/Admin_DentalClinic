@@ -161,7 +161,7 @@ export const mockDoctors: Doctor[] = [
     phone: '+1 (555) 312-8877',
     email: 't.almansoor@smileclinic.com',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80',
-    experience: '15 Years Experience &bull; Facial Reconstruction Board',
+    experience: '15 Years Experience • Facial Reconstruction Board',
   },
   {
     id: 'doc-10',
@@ -178,7 +178,7 @@ export const mockDoctors: Doctor[] = [
     phone: '+1 (555) 423-9901',
     email: 'c.dupont@smileclinic.com',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
-    experience: '8 Years Experience &bull; Diplomate American Board of Pediatric Dentistry',
+    experience: '8 Years Experience • Diplomate American Board of Pediatric Dentistry',
   },
   {
     id: 'doc-11',
@@ -195,7 +195,7 @@ export const mockDoctors: Doctor[] = [
     phone: '+1 (555) 534-7712',
     email: 'v.malhotra@smileclinic.com',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
-    experience: '11 Years Experience &bull; Arthroscopic TMJ Surgeon',
+    experience: '11 Years Experience • Arthroscopic TMJ Surgeon',
   },
   {
     id: 'doc-12',
@@ -212,7 +212,7 @@ export const mockDoctors: Doctor[] = [
     phone: '+1 (555) 645-8823',
     email: 'm.chen@smileclinic.com',
     avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=256&q=80',
-    experience: '9 Years Experience &bull; CBCT Guided Apicoectomy Lead',
+    experience: '9 Years Experience • CBCT Guided Apicoectomy Lead',
   },
 ];
 
@@ -223,7 +223,7 @@ export const mockORSuites: ORSuite[] = [
     suiteName: 'Main Pavilion Surgery Suite 1',
     currentProcedure: 'Full-Arch All-on-4 Implant Reconstruction',
     primarySurgeon: 'Dr. Marcus Vance',
-    assistingStaff: 'Nurse Taylor &bull; Tech Adams',
+    assistingStaff: 'Nurse Taylor • Tech Adams',
     status: 'In Surgery',
     startTime: '08:30 AM',
     estimatedEnd: '11:45 AM',
@@ -236,7 +236,7 @@ export const mockORSuites: ORSuite[] = [
     suiteName: 'Craniofacial Surgical Bay 2',
     currentProcedure: 'Bimaxillary Le Fort I Osteotomy',
     primarySurgeon: 'Dr. Elena Rostova',
-    assistingStaff: 'Anesthesiologist Dr. Chen &bull; Tech Miller',
+    assistingStaff: 'Anesthesiologist Dr. Chen • Tech Miller',
     status: 'In Surgery',
     startTime: '09:00 AM',
     estimatedEnd: '13:15 PM',
@@ -262,7 +262,7 @@ export const mockORSuites: ORSuite[] = [
     suiteName: 'Pediatric Rehabilitation Suite',
     currentProcedure: 'Full Mouth Pediatric Dental Rehabilitation',
     primarySurgeon: 'Dr. Julian Hayes',
-    assistingStaff: 'Nurse Kelly &bull; Tech Robinson',
+    assistingStaff: 'Nurse Kelly • Tech Robinson',
     status: 'Pre-Op Prep',
     startTime: '11:00 AM',
     estimatedEnd: '12:45 PM',
@@ -643,7 +643,7 @@ export const mockLabOrders: LabOrder[] = [
     status: 'Result Available',
     criticalFlag: true,
     analyzerId: 'BD Phoenix M50 Automated Fleet',
-    resultValue: 'High Colony Streptococcus Viridans &bull; Penicillin Resistance Flagged',
+    resultValue: 'High Colony Streptococcus Viridans • Penicillin Resistance Flagged',
     normalRange: 'Negative / No Significant Bacterial Growth',
   },
   {
@@ -660,7 +660,7 @@ export const mockLabOrders: LabOrder[] = [
     status: 'Verified & Signed',
     criticalFlag: false,
     analyzerId: 'Planmeca ProMax 3D Mid Imaging Bay',
-    resultValue: 'Symmetrical Maxillary Architecture &bull; Airway Index Normal',
+    resultValue: 'Symmetrical Maxillary Architecture • Airway Index Normal',
   },
   {
     id: 'lab-4',
@@ -676,7 +676,7 @@ export const mockLabOrders: LabOrder[] = [
     status: 'Verified & Signed',
     criticalFlag: false,
     analyzerId: 'Dentsply Sirona inLab MC X5 Milling Unit',
-    resultValue: 'Margin Fit 25 Microns &bull; Verified by Lead Tech',
+    resultValue: 'Margin Fit 25 Microns • Verified by Lead Tech',
   },
   {
     id: 'lab-5',
@@ -692,7 +692,7 @@ export const mockLabOrders: LabOrder[] = [
     status: 'Verified & Signed',
     criticalFlag: false,
     analyzerId: 'Sysmex XN-550 Automated Hematology Fleet',
-    resultValue: 'Platelets 285k/uL &bull; Hemoglobin 13.8 g/dL (Normal Range)',
+    resultValue: 'Platelets 285k/uL • Hemoglobin 13.8 g/dL (Normal Range)',
   },
 ];
 

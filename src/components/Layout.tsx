@@ -21,7 +21,9 @@ import {
   CheckCircle2, 
   ExternalLink,
   Trash2,
-  Check
+  Check,
+  Calendar,
+  RotateCw
 } from 'lucide-react';
 import { mockNotifications } from '../data/mockData';
 import { NotificationItem } from '../types';
@@ -40,7 +42,39 @@ export default function Layout() {
   // Lock background window scrolling whenever any popup, drawer, or modal is open
   useBodyScrollLock(Boolean(mobileMenuOpen || notificationsOpen || profileOpen || powerBiOpen || exportOpen));
 
-  const [selectedDept, setSelectedDept] = useState('All Departments');
+  // Today's Date and 5-second recurring live sync state
+  const [currentDateFormatted] = useState(() => {
+    return new Date().toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  });
+
+  const [syncCountdown, setSyncCountdown] = useState(5);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    // 5-second periodic live sync interval
+    const syncInterval = setInterval(() => {
+      setIsSyncing(true);
+      setTimeout(() => {
+        setIsSyncing(false);
+      }, 850);
+      setSyncCountdown(5);
+    }, 5000);
+
+    const countdownInterval = setInterval(() => {
+      setSyncCountdown((prev) => (prev <= 1 ? 5 : prev - 1));
+    }, 1000);
+
+    return () => {
+      clearInterval(syncInterval);
+      clearInterval(countdownInterval);
+    };
+  }, []);
+
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'critical' | 'financial' | 'triage'>('all');
   
   const [notifications, setNotifications] = useState<NotificationItem[]>(mockNotifications);
@@ -231,27 +265,33 @@ export default function Layout() {
             </NavLink>
           </div>
 
-          {/* Middle: Department Selector & Search */}
-          <div className="hidden md:flex items-center gap-3 flex-1 max-w-xl mx-4">
-            {/* Department Dropdown */}
-            <div className="relative shrink-0">
-              <select
-                value={selectedDept}
-                onChange={(e) => {
-                  setSelectedDept(e.target.value);
-                  showToast('info', 'Department Filter', `Switched view to ${e.target.value}`);
-                }}
-                className="appearance-none pl-3 pr-8 py-1.5 bg-slate-100 hover:bg-slate-200/80 rounded-xl text-xs font-semibold text-slate-800 border-none cursor-pointer focus:ring-2 focus:ring-primary transition-all"
-              >
-                <option>All Departments</option>
-                <option>Oral &amp; Maxillofacial Surgery</option>
-                <option>Restorative &amp; Endodontics</option>
-                <option>Orthodontics &amp; Craniofacial</option>
-                <option>Periodontics &amp; Implants</option>
-                <option>Emergency Triage Station</option>
-                <option>Pathology &amp; Diagnostics</option>
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          {/* Middle: Today's Date & Live 5s Sync Telemetry + Global Search */}
+          <div className="hidden md:flex items-center gap-3 flex-1 max-w-2xl mx-2 lg:mx-4">
+            {/* Today's Date Badge */}
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200/70 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 shrink-0 transition-colors shadow-2xs">
+              <Calendar className="w-3.5 h-3.5 text-primary" />
+              <span>{currentDateFormatted}</span>
+            </div>
+
+            {/* Live 5-Second Sync Indicator */}
+            <div 
+              onClick={() => {
+                setIsSyncing(true);
+                setTimeout(() => setIsSyncing(false), 800);
+                showToast('success', 'Real-Time Sync Completed', 'Local clinical state synchronized with central HL7 node.');
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200/70 rounded-xl text-xs font-semibold text-emerald-800 shrink-0 transition-all cursor-pointer shadow-2xs group"
+              title="Click to force immediate synchronization (Auto-syncs every 5s)"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className={`absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 ${isSyncing ? 'animate-ping' : ''}`} />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <RotateCw className={`w-3.5 h-3.5 text-emerald-600 transition-transform ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180'}`} />
+              <span className="font-bold">Live Sync</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-200/60 text-emerald-900 font-mono">
+                {isSyncing ? 'Syncing...' : `${syncCountdown}s`}
+              </span>
             </div>
 
             {/* Global Search Bar */}
@@ -746,19 +786,9 @@ export default function Layout() {
           )}
         </AnimatePresence>
 
-        {/* Content Outlet with Smooth Page Transitions */}
+        {/* Content Outlet with Direct Responsive Mounting */}
         <main className="flex-1 p-3 sm:p-6 lg:p-8 max-w-full overflow-x-hidden">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18, ease: 'easeOut' }}
-            >
-              <Outlet context={{ showToast, openPowerBi: () => setPowerBiOpen(true), openExport: () => setExportOpen(true) }} />
-            </motion.div>
-          </AnimatePresence>
+          <Outlet context={{ showToast, openPowerBi: () => setPowerBiOpen(true), openExport: () => setExportOpen(true) }} />
         </main>
       </div>
     </div>

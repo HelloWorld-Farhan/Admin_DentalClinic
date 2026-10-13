@@ -586,7 +586,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onNotify }) => {
           <Headphones className="w-3.5 h-3.5 text-blue-600" />
           <span>Need IT Emergency Assistance? Call Helpdesk ext. 4402</span>
         </div>
-        <span>Smile Clinic Hospital Management System &bull; TLS 1.3 Certified</span>
+        <span>Smile Clinic Hospital Management System • TLS 1.3 Certified</span>
       </footer>
     </div>
   );

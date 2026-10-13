@@ -94,7 +94,7 @@ export default function PowerBIModal({ isOpen, onClose }: PowerBIModalProps) {
                     DirectQuery Live
                   </span>
                 </div>
-                <p className="text-xs text-slate-300 mt-0.5">Azure Synapse Healthcare Fabric &bull; HL7 FHIR Model R4</p>
+                <p className="text-xs text-slate-300 mt-0.5">Azure Synapse Healthcare Fabric • HL7 FHIR Model R4</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -268,7 +268,7 @@ export default function PowerBIModal({ isOpen, onClose }: PowerBIModalProps) {
           <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
             <div className="text-xs text-slate-500 flex items-center gap-2">
               <Activity className="w-4 h-4 text-emerald-500" />
-              <span>Real-Time Model Refresh &bull; Azure Lakehouse Latency: 42ms</span>
+              <span>Real-Time Model Refresh • Azure Lakehouse Latency: 42ms</span>
             </div>
 
             <div className="flex items-center gap-2.5 w-full sm:w-auto">
