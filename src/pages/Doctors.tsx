@@ -15,7 +15,14 @@ import {
   RotateCcw,
   Upload,
   Camera,
-  User
+  User,
+  Clock,
+  Check,
+  ChevronLeft,
+  Sun,
+  Moon,
+  Sunrise,
+  MapPin
 } from 'lucide-react';
 import { useClinicDB } from '../lib/db';
 import { Doctor } from '../types';
@@ -32,7 +39,7 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
   }>();
 
   // Central Database with real-time reactive sync & persistent storage
-  const { doctors: doctorsList, orSuites, addDoctor, bookORSuite } = useClinicDB();
+  const { doctors: doctorsList, orSuites, addDoctor, bookORSuite, updateDoctorShift } = useClinicDB();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'On Duty' | 'In Surgery' | 'On Rounds' | 'Off Duty'>('All');
   const [specialtyFilter, setSpecialtyFilter] = useState('All Specialties');
@@ -41,6 +48,63 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
   // Modals
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [newDoctorModalOpen, setNewDoctorModalOpen] = useState(false);
+
+  // Doctor Shift Modification State
+  const [isModifyingShift, setIsModifyingShift] = useState(false);
+  const [shiftForm, setShiftForm] = useState({
+    shiftPreset: '08:00 – 16:30',
+    customStart: '08:00',
+    customEnd: '16:30',
+    isCustom: false,
+    status: 'On Duty' as Doctor['status'],
+    room: '',
+  });
+
+  const handleOpenDoctorDetail = (doc: Doctor) => {
+    setSelectedDoctor(doc);
+    setIsModifyingShift(false);
+    const presets = ['07:30 – 15:30', '08:00 – 16:30', '12:00 – 20:30', '20:00 – 08:00'];
+    const isCustom = !presets.includes(doc.shift);
+    const parts = doc.shift.split('–').map((s) => s.trim());
+    setShiftForm({
+      shiftPreset: isCustom ? 'custom' : doc.shift,
+      customStart: parts[0] || '08:00',
+      customEnd: parts[1] || '16:30',
+      isCustom,
+      status: doc.status,
+      room: doc.room,
+    });
+  };
+
+  const handleSaveShift = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedDoctor) return;
+    const finalShift = shiftForm.isCustom
+      ? `${shiftForm.customStart} – ${shiftForm.customEnd}`
+      : shiftForm.shiftPreset;
+
+    const updated = updateDoctorShift(
+      selectedDoctor.id,
+      finalShift,
+      shiftForm.status,
+      shiftForm.room.trim() || selectedDoctor.room
+    );
+
+    if (updated) {
+      setSelectedDoctor({ ...selectedDoctor, ...updated });
+      showToast(
+        'success',
+        'Shift Schedule Updated Live',
+        `${selectedDoctor.name} availability reassigned to ${finalShift} (${shiftForm.status}) in ${shiftForm.room || selectedDoctor.room}`
+      );
+      onNotify?.(
+        'Doctor Shift Updated',
+        `${selectedDoctor.name} shift updated to ${finalShift} (${shiftForm.status})`,
+        'system'
+      );
+    }
+    setIsModifyingShift(false);
+  };
 
   // Book OR Suite form state
   const [scheduleForm, setScheduleForm] = useState({
@@ -444,7 +508,7 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
                   <tr 
                     key={doc.id}
                     className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
-                    onClick={() => setSelectedDoctor(doc)}
+                    onClick={() => handleOpenDoctorDetail(doc)}
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
@@ -504,7 +568,7 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
 
                     <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <button
-                        onClick={() => setSelectedDoctor(doc)}
+                        onClick={() => handleOpenDoctorDetail(doc)}
                         className="px-2.5 py-1 text-primary hover:bg-primary/10 rounded-lg font-semibold text-xs transition-colors"
                       >
                         Inspect Profile
@@ -518,12 +582,12 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
         </div>
       </div>
 
-      {/* Doctor Detail Inspection Modal */}
+      {/* Doctor Detail Inspection & Modify Shift Modal */}
       <AnimatePresence>
         {selectedDoctor && (
           <ModalPortal>
             <div 
-              onClick={() => setSelectedDoctor(null)}
+              onClick={() => { setSelectedDoctor(null); setIsModifyingShift(false); }}
               className="fixed inset-0 z-[99999] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-6 pb-6 sm:pb-6 bg-slate-950/75 backdrop-blur-sm"
             >
             <motion.div
@@ -534,86 +598,306 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
               onClick={(e) => e.stopPropagation()}
               className="relative z-10 bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden max-h-[calc(100dvh-1.5rem)] sm:max-h-[88vh] flex flex-col my-auto border border-slate-200"
             >
-              <div className="p-4 sm:p-5 bg-gradient-to-r from-primary to-primary-container text-white flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3.5">
-                  <img
-                    src={selectedDoctor.avatar}
-                    alt={selectedDoctor.name}
-                    className="w-12 h-12 rounded-xl object-cover ring-2 ring-white/30"
-                  />
-                  <div>
-                    <h3 className="font-bold text-base">{selectedDoctor.name}</h3>
-                    <p className="text-xs text-on-primary-container">{selectedDoctor.title}</p>
-                    <span className="text-[10px] text-white/80 block mt-0.5">{selectedDoctor.npi}</span>
-                  </div>
-                </div>
-                <button onClick={() => setSelectedDoctor(null)} className="text-white/80 hover:text-white">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="p-6 space-y-4 text-xs">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-slate-50 rounded-xl">
-                    <span className="text-slate-400 text-[10px] uppercase font-bold block">Assigned Room</span>
-                    <span className="font-bold text-slate-900 text-sm mt-0.5 block">{selectedDoctor.room}</span>
-                  </div>
-                  <div className="p-3 bg-slate-50 rounded-xl">
-                    <span className="text-slate-400 text-[10px] uppercase font-bold block">Shift Duration</span>
-                    <span className="font-bold text-slate-900 text-sm mt-0.5 block">{selectedDoctor.shift}</span>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                    <div>
-                      <span className="font-bold text-emerald-900 block">Board Certified Credentials</span>
-                      <span className="text-[11px] text-emerald-700">{selectedDoctor.experience}</span>
+              <AnimatePresence mode="wait">
+                {!isModifyingShift ? (
+                  // VIEW MODE: Doctor Profile Card
+                  <motion.div
+                    key="view-profile"
+                    initial={{ opacity: 0, x: -16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -16 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex flex-col h-full"
+                  >
+                    <div className="p-4 sm:p-5 bg-gradient-to-r from-primary to-primary-container text-white flex items-center justify-between shrink-0">
+                      <div className="flex items-center gap-3.5">
+                        <img
+                          src={selectedDoctor.avatar}
+                          alt={selectedDoctor.name}
+                          className="w-12 h-12 rounded-xl object-cover ring-2 ring-white/30"
+                        />
+                        <div>
+                          <h3 className="font-bold text-base">{selectedDoctor.name}</h3>
+                          <p className="text-xs text-on-primary-container">{selectedDoctor.title}</p>
+                          <span className="text-[10px] text-white/80 block mt-0.5">{selectedDoctor.npi}</span>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setSelectedDoctor(null)} 
+                        className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
                     </div>
-                  </div>
-                  <span className="text-[11px] font-bold text-emerald-800 bg-white px-2 py-0.5 rounded shadow-sm">
-                    Verified
-                  </span>
-                </div>
 
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
-                    <span className="text-slate-500 flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5" /> Direct Pager / Contact
-                    </span>
-                    <span className="font-bold text-slate-800">{selectedDoctor.phone}</span>
-                  </div>
-                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
-                    <span className="text-slate-500 flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5" /> Institutional Email
-                    </span>
-                    <span className="font-bold text-slate-800">{selectedDoctor.email}</span>
-                  </div>
-                  <div className="flex items-center justify-between py-1.5">
-                    <span className="text-slate-500">Surgeries Scheduled Today</span>
-                    <span className="font-bold text-primary">{selectedDoctor.surgeriesToday} Cases</span>
-                  </div>
-                </div>
-              </div>
+                    <div className="p-6 space-y-4 text-xs overflow-y-auto flex-1">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                          <span className="text-slate-400 text-[10px] uppercase font-bold block">Assigned Room</span>
+                          <span className="font-bold text-slate-900 text-sm mt-0.5 block">{selectedDoctor.room}</span>
+                        </div>
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                          <span className="text-slate-400 text-[10px] uppercase font-bold block">Shift Duration</span>
+                          <motion.span 
+                            key={selectedDoctor.shift}
+                            initial={{ scale: 0.95 }}
+                            animate={{ scale: 1 }}
+                            className="font-bold text-slate-900 text-sm mt-0.5 block"
+                          >
+                            {selectedDoctor.shift}
+                          </motion.span>
+                        </div>
+                      </div>
 
-              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
-                <button
-                  onClick={() => {
-                    showToast('info', 'Shift Reassigned', `${selectedDoctor.name} availability updated`);
-                    setSelectedDoctor(null);
-                  }}
-                  className="text-xs font-semibold text-slate-600 hover:text-slate-900"
-                >
-                  Modify Shift
-                </button>
-                <button
-                  onClick={() => setSelectedDoctor(null)}
-                  className="px-4 py-2 bg-primary hover:bg-primary-container text-white rounded-xl text-xs font-semibold shadow-md"
-                >
-                  Done
-                </button>
-              </div>
+                      <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                          <div>
+                            <span className="font-bold text-emerald-900 block">Board Certified Credentials</span>
+                            <span className="text-[11px] text-emerald-700">{selectedDoctor.experience}</span>
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-bold text-emerald-800 bg-white px-2 py-0.5 rounded shadow-sm">
+                          Verified
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5 pt-1">
+                        <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                          <span className="text-slate-500 flex items-center gap-1.5">
+                            <Phone className="w-3.5 h-3.5" /> Direct Pager / Contact
+                          </span>
+                          <span className="font-bold text-slate-800">{selectedDoctor.phone}</span>
+                        </div>
+                        <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                          <span className="text-slate-500 flex items-center gap-1.5">
+                            <Mail className="w-3.5 h-3.5" /> Institutional Email
+                          </span>
+                          <span className="font-bold text-slate-800">{selectedDoctor.email}</span>
+                        </div>
+                        <div className="flex items-center justify-between py-1.5">
+                          <span className="text-slate-500">Surgeries Scheduled Today</span>
+                          <span className="font-bold text-primary">{selectedDoctor.surgeriesToday} Cases</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center shrink-0">
+                      <button
+                        onClick={() => setIsModifyingShift(true)}
+                        className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 hover:text-primary active:scale-95"
+                      >
+                        <Clock className="w-3.5 h-3.5 text-primary" />
+                        <span>Modify Shift</span>
+                      </button>
+                      <button
+                        onClick={() => setSelectedDoctor(null)}
+                        className="px-5 py-2 bg-primary hover:bg-primary-container text-white rounded-xl text-xs font-semibold shadow-md active:scale-95 transition-all"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  // EDIT MODE: Dedicated Animated Shift Modification Panel
+                  <motion.div
+                    key="edit-shift"
+                    initial={{ opacity: 0, x: 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 16 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex flex-col h-full"
+                  >
+                    <div className="p-4 sm:p-5 bg-gradient-to-r from-primary to-primary-container text-white flex items-center justify-between shrink-0">
+                      <div className="flex items-center gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setIsModifyingShift(false)}
+                          className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                        >
+                          <ChevronLeft className="w-4 h-4 text-white" />
+                        </button>
+                        <div>
+                          <h3 className="font-bold text-sm sm:text-base leading-tight">Modify Shift Schedule</h3>
+                          <p className="text-[11px] text-white/80">{selectedDoctor.name} • {selectedDoctor.specialty}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => { setSelectedDoctor(null); setIsModifyingShift(false); }} 
+                        className="text-white/80 hover:text-white"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleSaveShift} className="p-5 sm:p-6 space-y-4 text-xs overflow-y-auto flex-1">
+                      {/* Presets */}
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2">
+                          Select Shift Schedule Preset
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { label: 'Morning Shift', hours: '07:30 – 15:30', icon: Sunrise },
+                            { label: 'Day Regular', hours: '08:00 – 16:30', icon: Sun },
+                            { label: 'Afternoon / Eve', hours: '12:00 – 20:30', icon: Sun },
+                            { label: 'Night / On-Call', hours: '20:00 – 08:00', icon: Moon },
+                          ].map((preset) => {
+                            const isSelected = !shiftForm.isCustom && shiftForm.shiftPreset === preset.hours;
+                            const Icon = preset.icon;
+                            return (
+                              <button
+                                key={preset.hours}
+                                type="button"
+                                onClick={() => setShiftForm({ ...shiftForm, isCustom: false, shiftPreset: preset.hours })}
+                                className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                                  isSelected
+                                    ? 'border-primary bg-primary/5 text-primary shadow-sm ring-1 ring-primary'
+                                    : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-bold text-xs flex items-center gap-1.5">
+                                    <Icon className="w-3.5 h-3.5" />
+                                    {preset.label}
+                                  </span>
+                                  {isSelected && <Check className="w-3.5 h-3.5 text-primary" />}
+                                </div>
+                                <span className="text-[11px] text-slate-500 font-mono">{preset.hours}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Custom Time Option */}
+                        <div className="mt-2.5">
+                          <button
+                            type="button"
+                            onClick={() => setShiftForm({ ...shiftForm, isCustom: true })}
+                            className={`w-full p-2.5 rounded-xl border text-left transition-all flex items-center justify-between ${
+                              shiftForm.isCustom
+                                ? 'border-primary bg-primary/5 text-primary ring-1 ring-primary'
+                                : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <span className="font-semibold text-xs flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5" />
+                              Custom Shift Hours
+                            </span>
+                            {shiftForm.isCustom && <Check className="w-3.5 h-3.5 text-primary" />}
+                          </button>
+
+                          {shiftForm.isCustom && (
+                            <motion.div 
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              className="grid grid-cols-2 gap-2.5 mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200"
+                            >
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Shift Start</label>
+                                <input
+                                  type="time"
+                                  value={shiftForm.customStart}
+                                  onChange={(e) => setShiftForm({ ...shiftForm, customStart: e.target.value })}
+                                  className="w-full p-2 rounded-lg border border-slate-200 text-xs bg-white focus:ring-1 focus:ring-primary focus:outline-none"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Shift End</label>
+                                <input
+                                  type="time"
+                                  value={shiftForm.customEnd}
+                                  onChange={(e) => setShiftForm({ ...shiftForm, customEnd: e.target.value })}
+                                  className="w-full p-2 rounded-lg border border-slate-200 text-xs bg-white focus:ring-1 focus:ring-primary focus:outline-none"
+                                />
+                              </div>
+                            </motion.div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Clinical Duty Status */}
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2">
+                          Clinical Duty Status
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          {(['On Duty', 'In Surgery', 'On Rounds', 'Off Duty'] as const).map((st) => {
+                            const isSelected = shiftForm.status === st;
+                            return (
+                              <button
+                                key={st}
+                                type="button"
+                                onClick={() => setShiftForm({ ...shiftForm, status: st })}
+                                className={`p-2 rounded-xl border text-center font-bold text-xs transition-all ${
+                                  isSelected
+                                    ? st === 'On Duty'
+                                      ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
+                                      : st === 'In Surgery'
+                                      ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                                      : st === 'On Rounds'
+                                      ? 'bg-sky-500 text-white border-sky-500 shadow-sm'
+                                      : 'bg-slate-700 text-white border-slate-700 shadow-sm'
+                                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                                }`}
+                              >
+                                {st}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Assigned Operatory / Bay */}
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                          Assigned Clinic Operatory / Room
+                        </label>
+                        <div className="relative">
+                          <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <input
+                            type="text"
+                            value={shiftForm.room}
+                            onChange={(e) => setShiftForm({ ...shiftForm, room: e.target.value })}
+                            placeholder="E.g., Diagnostic Imaging Bay, Operatory 4"
+                            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-primary focus:outline-none"
+                          />
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {['Diagnostic Imaging Bay', 'Operatory 1', 'Operatory 2', 'Operatory 6', 'Main Surgical Suite'].map((preset) => (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => setShiftForm({ ...shiftForm, room: preset })}
+                              className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-medium transition-colors"
+                            >
+                              {preset}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Sticky Footer */}
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setIsModifyingShift(false)}
+                          className="px-4 py-2 text-slate-600 font-semibold hover:text-slate-900 rounded-xl"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 bg-primary hover:bg-primary-container text-white font-bold rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+                        >
+                          <Check className="w-4 h-4" />
+                          <span>Save Shift Changes</span>
+                        </button>
+                      </div>
+                    </form>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           </div>
           </ModalPortal>

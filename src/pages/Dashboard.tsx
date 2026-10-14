@@ -46,7 +46,7 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
   const navigate = useNavigate();
 
   // Real-time Central Database
-  const { doctors, orSuites } = useClinicDB();
+  const { doctors, orSuites, patients } = useClinicDB();
 
   // Active filter tab
   const [timeFilter, setTimeFilter] = useState<'24h' | '7d' | '30d'>('24h');
@@ -61,6 +61,12 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
   const specialistsCount = doctors.filter((d) => !d.title?.toLowerCase().includes('resident')).length;
   const residentsCount = doctors.filter((d) => d.title?.toLowerCase().includes('resident')).length;
   const onShiftPct = doctors.length > 0 ? Math.round((onDutyDoctors.length / doctors.length) * 100) : 0;
+
+  // Dynamic Patient telemetry
+  const patientDiff = Math.max(0, patients.length - 8);
+  const activeInpatientsCount = 184 + patientDiff;
+  const stablePatientCount = 166 + patientDiff;
+  const todaysVisitsCount = 412 + patientDiff;
 
   // Freeze background window and prevent interaction when popup is open
   useBodyScrollLock(Boolean(broadcastModalOpen || selectedSuiteDetail));
@@ -146,7 +152,7 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
           </div>
           <div className="mt-3">
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-slate-900 dark:text-white">184</span>
+              <span className="text-2xl font-bold text-slate-900 dark:text-white">{activeInpatientsCount}</span>
               <span className="text-xs font-semibold text-emerald-600 flex items-center">
                 <ArrowUpRight className="w-3.5 h-3.5" /> 92% Occupancy
               </span>
@@ -155,7 +161,7 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
           </div>
           <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between text-[11px] text-slate-600">
             <span>Critical Acuity: <b>18</b></span>
-            <span>Stable: <b>166</b></span>
+            <span>Stable: <b>{stablePatientCount}</b></span>
           </div>
         </motion.div>
 
@@ -196,7 +202,7 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
           </div>
           <div className="mt-3">
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-slate-900 dark:text-white">412</span>
+              <span className="text-2xl font-bold text-slate-900 dark:text-white">{todaysVisitsCount}</span>
               <span className="text-xs font-semibold text-emerald-600 flex items-center">
                 <CheckCircle2 className="w-3.5 h-3.5 mr-0.5" /> 310 Done
               </span>

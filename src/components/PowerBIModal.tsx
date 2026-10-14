@@ -56,6 +56,69 @@ export default function PowerBIModal({ isOpen, onClose }: PowerBIModalProps) {
     }, 1200);
   };
 
+  const [hoveredDept, setHoveredDept] = useState<number | null>(null);
+
+  const rangeData = {
+    '24h': {
+      production: '$142,850',
+      productionPct: '92%',
+      growth: '+12.4%',
+      cleanClaim: '94.2%',
+      chairTurnover: '11.4 min',
+      bedOccupancy: '92.0%',
+      depts: [
+        { name: 'Main Pavilion Surgery & OR', amount: '$54,200', pct: 86, color: 'bg-primary', cases: 14, margin: '62%' },
+        { name: 'Restorative & Endodontics', amount: '$38,600', pct: 74, color: 'bg-secondary', cases: 28, margin: '54%' },
+        { name: 'Orthodontics & Craniofacial', amount: '$31,400', pct: 68, color: 'bg-tertiary', cases: 22, margin: '49%' },
+        { name: 'Emergency Triage & Walk-ins', amount: '$18,650', pct: 44, color: 'bg-amber-500', cases: 35, margin: '41%' },
+      ],
+    },
+    '7d': {
+      production: '$894,300',
+      productionPct: '94%',
+      growth: '+14.1%',
+      cleanClaim: '95.1%',
+      chairTurnover: '10.8 min',
+      bedOccupancy: '90.4%',
+      depts: [
+        { name: 'Main Pavilion Surgery & OR', amount: '$342,000', pct: 88, color: 'bg-primary', cases: 94, margin: '64%' },
+        { name: 'Restorative & Endodontics', amount: '$248,500', pct: 76, color: 'bg-secondary', cases: 182, margin: '56%' },
+        { name: 'Orthodontics & Craniofacial', amount: '$198,200', pct: 71, color: 'bg-tertiary', cases: 146, margin: '51%' },
+        { name: 'Emergency Triage & Walk-ins', amount: '$105,600', pct: 48, color: 'bg-amber-500', cases: 240, margin: '43%' },
+      ],
+    },
+    '30d': {
+      production: '$3,480,200',
+      productionPct: '96%',
+      growth: '+16.8%',
+      cleanClaim: '96.0%',
+      chairTurnover: '11.2 min',
+      bedOccupancy: '89.5%',
+      depts: [
+        { name: 'Main Pavilion Surgery & OR', amount: '$1,380,000', pct: 90, color: 'bg-primary', cases: 380, margin: '65%' },
+        { name: 'Restorative & Endodontics', amount: '$980,000', pct: 78, color: 'bg-secondary', cases: 720, margin: '58%' },
+        { name: 'Orthodontics & Craniofacial', amount: '$740,000', pct: 73, color: 'bg-tertiary', cases: 580, margin: '53%' },
+        { name: 'Emergency Triage & Walk-ins', amount: '$380,200', pct: 52, color: 'bg-amber-500', cases: 980, margin: '45%' },
+      ],
+    },
+    'ytd': {
+      production: '$18,240,000',
+      productionPct: '98%',
+      growth: '+19.2%',
+      cleanClaim: '96.8%',
+      chairTurnover: '10.5 min',
+      bedOccupancy: '91.8%',
+      depts: [
+        { name: 'Main Pavilion Surgery & OR', amount: '$7,250,000', pct: 94, color: 'bg-primary', cases: 2100, margin: '67%' },
+        { name: 'Restorative & Endodontics', amount: '$5,120,000', pct: 82, color: 'bg-secondary', cases: 3950, margin: '59%' },
+        { name: 'Orthodontics & Craniofacial', amount: '$3,890,000', pct: 75, color: 'bg-tertiary', cases: 3100, margin: '55%' },
+        { name: 'Emergency Triage & Walk-ins', amount: '$1,980,000', pct: 56, color: 'bg-amber-500', cases: 5400, margin: '46%' },
+      ],
+    },
+  };
+
+  const currentData = rangeData[selectedRange];
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -157,105 +220,138 @@ export default function PowerBIModal({ isOpen, onClose }: PowerBIModalProps) {
           <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
             {/* KPI Cards Bento */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+              <motion.div 
+                key={`prod-${selectedRange}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 hover:shadow-md transition-shadow"
+              >
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Billed Production</span>
                 <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">$142,850</span>
+                  <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{currentData.production}</span>
                   <span className="text-xs font-semibold text-emerald-600 flex items-center">
-                    <TrendingUp className="w-3 h-3 mr-0.5" /> +12.4%
+                    <TrendingUp className="w-3 h-3 mr-0.5" /> {currentData.growth}
                   </span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-3 overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
-                    animate={{ width: '92%' }}
-                    transition={{ duration: 0.8 }}
+                    animate={{ width: currentData.productionPct }}
+                    transition={{ duration: 0.6 }}
                     className="bg-primary h-full rounded-full"
                   />
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+              <motion.div 
+                key={`claim-${selectedRange}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 hover:shadow-md transition-shadow"
+              >
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Clean Claim Pass</span>
                 <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">94.2%</span>
+                  <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{currentData.cleanClaim}</span>
                   <span className="text-xs font-semibold text-emerald-600">Goal: 90%</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-3 overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
-                    animate={{ width: '94.2%' }}
-                    transition={{ duration: 0.8 }}
+                    animate={{ width: currentData.cleanClaim }}
+                    transition={{ duration: 0.6 }}
                     className="bg-emerald-500 h-full rounded-full"
                   />
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+              <motion.div 
+                key={`turn-${selectedRange}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 hover:shadow-md transition-shadow"
+              >
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Chair Turnover</span>
                 <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">11.4 min</span>
+                  <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{currentData.chairTurnover}</span>
                   <span className="text-xs font-semibold text-sky-600">Fast Pace</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-3 overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: '85%' }}
-                    transition={{ duration: 0.8 }}
+                    transition={{ duration: 0.6 }}
                     className="bg-secondary h-full rounded-full"
                   />
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+              <motion.div 
+                key={`bed-${selectedRange}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 hover:shadow-md transition-shadow"
+              >
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Bed Occupancy</span>
                 <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">92.0%</span>
+                  <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{currentData.bedOccupancy}</span>
                   <span className="text-xs font-semibold text-amber-600">High Cap</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-3 overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
-                    animate={{ width: '92%' }}
-                    transition={{ duration: 0.8 }}
+                    animate={{ width: currentData.bedOccupancy }}
+                    transition={{ duration: 0.6 }}
                     className="bg-amber-500 h-full rounded-full"
                   />
                 </div>
-              </div>
+              </motion.div>
             </div>
 
-            {/* Department Revenue & Margin breakdown */}
-            <div className="p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+            {/* Department Revenue & Margin breakdown with Interactive Hover Tooltips */}
+            <div className="p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative">
               <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <Layers className="w-4 h-4 text-primary" />
                   <h4 className="font-bold text-sm text-slate-900 dark:text-white">Department Production &amp; Margin Velocity</h4>
                 </div>
-                <span className="text-xs text-slate-500">DAX Formula: Calculate(Sum(Billed), All(Depts))</span>
+                <span className="text-xs text-slate-500 font-mono">DAX: Calculate(Sum(Billed), All(Depts))</span>
               </div>
 
               <div className="space-y-3.5 pt-4">
-                {[
-                  { name: 'Main Pavilion Surgery & OR', amount: '$54,200', pct: 86, color: 'bg-primary' },
-                  { name: 'Restorative & Endodontics', amount: '$38,600', pct: 74, color: 'bg-secondary' },
-                  { name: 'Orthodontics & Craniofacial', amount: '$31,400', pct: 68, color: 'bg-tertiary' },
-                  { name: 'Emergency Triage & Walk-ins', amount: '$18,650', pct: 44, color: 'bg-amber-500' },
-                ].map((dept, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs font-medium">
-                      <span className="text-slate-700 dark:text-slate-300">{dept.name}</span>
-                      <span className="font-bold text-slate-900 dark:text-white">{dept.amount}</span>
+                {currentData.depts.map((dept, idx) => {
+                  const isHovered = hoveredDept === idx;
+                  return (
+                    <div 
+                      key={idx} 
+                      onMouseEnter={() => setHoveredDept(idx)}
+                      onMouseLeave={() => setHoveredDept(null)}
+                      className={`p-2.5 rounded-xl transition-all cursor-pointer ${
+                        isHovered ? 'bg-slate-50 dark:bg-slate-800/60 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between text-xs font-medium">
+                        <span className="text-slate-800 dark:text-slate-200 font-semibold">{dept.name}</span>
+                        <div className="flex items-center gap-3">
+                          {isHovered && (
+                            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded">
+                              {dept.cases} Cases • Margin {dept.margin}
+                            </span>
+                          )}
+                          <span className="font-bold text-slate-900 dark:text-white">{dept.amount}</span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden mt-1.5">
+                        <motion.div
+                          key={`${selectedRange}-${idx}`}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${dept.pct}%` }}
+                          transition={{ duration: 0.6, delay: idx * 0.08 }}
+                          className={`${dept.color} h-full rounded-full transition-all`}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${dept.pct}%` }}
-                        transition={{ duration: 0.6, delay: idx * 0.1 }}
-                        className={`${dept.color} h-full rounded-full`}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

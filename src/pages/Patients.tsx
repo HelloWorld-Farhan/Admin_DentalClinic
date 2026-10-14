@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users,
@@ -21,11 +21,16 @@ import {
   Clock,
   Bed,
   FileCheck,
+  BarChart3,
+  TrendingUp,
+  Sparkles,
 } from 'lucide-react';
 import { mockPatientsEHR, mockDoctors } from '../data/mockData';
 import { PatientEHR, AcuityLevel } from '../types';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { ModalPortal } from '../components/ModalPortal';
+import { useClinicDB } from '../lib/db';
+import { MasterEHRModal } from '../components/MasterEHRModal';
 
 interface PatientsProps {
   onNotify?: (title: string, message: string, type: 'critical' | 'financial' | 'triage' | 'system') => void;
@@ -34,8 +39,19 @@ interface PatientsProps {
 }
 
 export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onOpenExport }) => {
-  const [patients, setPatients] = useState<PatientEHR[]>(mockPatientsEHR);
-  const [selectedPatient, setSelectedPatient] = useState<PatientEHR | null>(mockPatientsEHR[0]);
+  const { patients, addPatient, updatePatient, deletePatient } = useClinicDB();
+  const [selectedPatient, setSelectedPatient] = useState<PatientEHR | null>(() => patients[0] || null);
+
+  useEffect(() => {
+    if (!selectedPatient && patients.length > 0) {
+      setSelectedPatient(patients[0]);
+    } else if (selectedPatient) {
+      const updated = patients.find((p) => p.id === selectedPatient.id);
+      if (updated) setSelectedPatient(updated);
+      else if (patients.length > 0) setSelectedPatient(patients[0]);
+    }
+  }, [patients]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedWard, setSelectedWard] = useState('ALL');
   const [selectedAcuity, setSelectedAcuity] = useState<string>('ALL');
@@ -48,10 +64,31 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
   const [dischargeModalOpen, setDischargeModalOpen] = useState(false);
   const [vitalsModalOpen, setVitalsModalOpen] = useState(false);
   const [rxModalOpen, setRxModalOpen] = useState(false);
+  const [masterEhrModalOpen, setMasterEhrModalOpen] = useState(false);
+
+  // Power BI chart state
+  const [hoveredWeek, setHoveredWeek] = useState<number | null>(null);
+  const [chartStreamFilter, setChartStreamFilter] = useState<'all' | 'inpatient' | 'outpatient'>('all');
 
   // Freeze background window scrolling when ANY patient modal is open
-  const isAnyModalOpen = Boolean(admissionModalOpen || transferModalOpen || dischargeModalOpen || vitalsModalOpen || rxModalOpen);
+  const isAnyModalOpen = Boolean(admissionModalOpen || transferModalOpen || dischargeModalOpen || vitalsModalOpen || rxModalOpen || masterEhrModalOpen);
   useBodyScrollLock(isAnyModalOpen);
+
+  // Dynamic Real-time Calculations
+  const baseCount = mockPatientsEHR.length;
+  const netAdded = patients.length - baseCount;
+  const totalRegisteredDisplay = (14820 + netAdded).toLocaleString();
+  const currentlyAdmittedDisplay = (1248 + netAdded).toLocaleString();
+  const newAdmissionsDisplay = 82 + Math.max(0, netAdded);
+
+  const weeklyIntakeData = useMemo(() => [
+    { week: 'Week 1 (Oct 01)', dates: 'Oct 01 – Oct 07', in: 245, out: 310, inHeight: 105, outHeight: 130, inPct: '+3.2%', outPct: '+4.5%', occupancy: '86%', acuity: '93% Stable', xIn: 60, xOut: 86 },
+    { week: 'Week 2 (Oct 08)', dates: 'Oct 08 – Oct 14', in: 280, out: 345, inHeight: 117, outHeight: 137, inPct: '+5.8%', outPct: '+6.1%', occupancy: '88%', acuity: '91% Stable', xIn: 180, xOut: 206 },
+    { week: 'Week 3 (Oct 15)', dates: 'Oct 15 – Oct 21', in: 315, out: 370, inHeight: 130, outHeight: 145, inPct: '+8.4%', outPct: '+7.2%', occupancy: '92%', acuity: '89% Stable', xIn: 300, xOut: 326 },
+    { week: 'Week 4 (Oct 22)', dates: 'Oct 22 – Oct 28', in: 230, out: 295, inHeight: 98, outHeight: 122, inPct: '-2.1%', outPct: '+1.4%', occupancy: '84%', acuity: '95% Stable', xIn: 420, xOut: 446 },
+    { week: 'Week 5 (Oct 29)', dates: 'Oct 29 – Nov 04', in: 275, out: 340, inHeight: 112, outHeight: 138, inPct: '+4.3%', outPct: '+5.5%', occupancy: '89%', acuity: '92% Stable', xIn: 540, xOut: 566 },
+    { week: 'Current Week', dates: 'Live Inpatient Intake', in: 305 + Math.max(0, netAdded), out: 385, inHeight: Math.min(160, 125 + Math.max(0, netAdded) * 4), outHeight: 150, inPct: '+9.1%', outPct: '+8.6%', occupancy: '94%', acuity: '90% Stable', xIn: 660, xOut: 686 },
+  ], [netAdded]);
 
   // Form states
   const [newAdmission, setNewAdmission] = useState({
@@ -115,10 +152,9 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
     e.preventDefault();
     if (!newAdmission.name.trim()) return;
 
-    const created: PatientEHR = {
-      id: `pat-${Date.now()}`,
+    const created = addPatient({
       mrn: newAdmission.mrn,
-      name: newAdmission.name,
+      name: newAdmission.name.trim(),
       age: Number(newAdmission.age),
       gender: newAdmission.gender,
       admissionType: newAdmission.admissionType,
@@ -139,9 +175,8 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
       allergies: newAdmission.allergies.split(',').map((s) => s.trim()).filter(Boolean),
       recentProcedures: ['Initial Clinical Workup & Vitals Intake'],
       radiographsAttached: true,
-    };
+    });
 
-    setPatients([created, ...patients]);
     setSelectedPatient(created);
     setAdmissionModalOpen(false);
     onNotify?.(
@@ -155,14 +190,10 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
     e.preventDefault();
     if (!selectedPatient) return;
 
-    setPatients(
-      patients.map((p) =>
-        p.id === selectedPatient.id
-          ? { ...p, room: transferData.toWard }
-          : p
-      )
-    );
-    setSelectedPatient((prev) => (prev ? { ...prev, room: transferData.toWard } : null));
+    const updated = updatePatient(selectedPatient.id, { room: transferData.toWard });
+    if (updated) {
+      setSelectedPatient({ ...selectedPatient, room: transferData.toWard });
+    }
     setTransferModalOpen(false);
     onNotify?.(
       'Bed Transfer Complete',
@@ -175,14 +206,14 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
     e.preventDefault();
     if (!selectedPatient) return;
 
-    setPatients(patients.filter((p) => p.id !== selectedPatient.id));
+    deletePatient(selectedPatient.id);
     setDischargeModalOpen(false);
     onNotify?.(
       'Discharge Summary Generated',
       `Clinical release approved for ${selectedPatient.name}. Electronic summary dispatched to pharmacy.`,
       'financial'
     );
-    setSelectedPatient(patients[1] || null);
+    setSelectedPatient(patients.find((p) => p.id !== selectedPatient.id) || null);
   };
 
   const getAcuityBadge = (acuity: AcuityLevel) => {
@@ -295,7 +326,14 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-3xl font-bold text-slate-900">14,820</span>
+            <motion.span 
+              key={totalRegisteredDisplay}
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              className="text-3xl font-bold text-slate-900"
+            >
+              {totalRegisteredDisplay}
+            </motion.span>
             <span className="text-xs font-semibold text-teal-600 flex items-center gap-0.5">+3.8%</span>
           </div>
           <div className="mt-3">
@@ -318,7 +356,14 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-3xl font-bold text-slate-900">1,248</span>
+            <motion.span 
+              key={currentlyAdmittedDisplay}
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              className="text-3xl font-bold text-slate-900"
+            >
+              {currentlyAdmittedDisplay}
+            </motion.span>
             <span className="inline-flex px-2 py-0.5 rounded-full bg-[#005c65]/10 text-[#005c65] text-xs font-semibold">
               87.4% Beds
             </span>
@@ -369,7 +414,14 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-3xl font-bold text-slate-900">82</span>
+            <motion.span 
+              key={newAdmissionsDisplay}
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              className="text-3xl font-bold text-slate-900"
+            >
+              {newAdmissionsDisplay}
+            </motion.span>
             <span className="inline-flex px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
               19 Triage ER
             </span>
@@ -389,64 +441,179 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
 
       {/* Analytical Demographics & ALOS Visual Split */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* 8 cols: Monthly Patient Intake Flow Chart */}
-        <div className="lg:col-span-8 bg-white rounded-xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between">
+        {/* 8 cols: Interactive Animated Power BI Patient Intake Flow Chart */}
+        <div className="lg:col-span-8 bg-white rounded-xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between relative">
           <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
             <div>
-              <h2 className="text-base font-bold text-slate-900">Monthly Patient Intake Flow &amp; Acuity</h2>
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-[#005c65]" />
+                <h2 className="text-base font-bold text-slate-900">Monthly Patient Intake Flow &amp; Acuity</h2>
+              </div>
               <p className="text-xs text-slate-500">Comparative tracking of Inpatient Admissions vs. Outpatient Encounters</p>
             </div>
-            <div className="flex items-center gap-4 text-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded bg-[#005c65]" />
-                <span className="text-slate-700 font-medium">Inpatient (Teal)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded bg-[#1560a4]" />
-                <span className="text-slate-700 font-medium">Outpatient (Blue)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded bg-slate-200" />
-                <span className="text-slate-400">Capacity Baseline</span>
-              </div>
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setChartStreamFilter('all')}
+                className={`px-2.5 py-1 rounded-lg transition-all ${
+                  chartStreamFilter === 'all'
+                    ? 'bg-white text-slate-900 shadow-sm font-bold'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                All Streams
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartStreamFilter('inpatient')}
+                className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${
+                  chartStreamFilter === 'inpatient'
+                    ? 'bg-[#005c65] text-white shadow-sm font-bold'
+                    : 'text-slate-500 hover:text-[#005c65]'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-[#005c65]" />
+                Inpatient
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartStreamFilter('outpatient')}
+                className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${
+                  chartStreamFilter === 'outpatient'
+                    ? 'bg-[#1560a4] text-white shadow-sm font-bold'
+                    : 'text-slate-500 hover:text-[#1560a4]'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-[#1560a4]" />
+                Outpatient
+              </button>
             </div>
           </div>
 
-          {/* High-precision SVG Bar & Trajectory Chart */}
-          <div className="w-full h-48 flex flex-col justify-end">
+          {/* Interactive Chart Container with Floating Tooltip */}
+          <div 
+            className="w-full h-52 flex flex-col justify-end relative"
+            onMouseLeave={() => setHoveredWeek(null)}
+          >
+            {/* Interactive Floating Tooltip */}
+            <AnimatePresence>
+              {hoveredWeek !== null && weeklyIntakeData[hoveredWeek] && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute z-20 pointer-events-none p-3.5 rounded-2xl bg-slate-900/95 backdrop-blur-md text-white text-[11px] shadow-2xl border border-slate-700 min-w-[220px]"
+                  style={{
+                    left: `${Math.min(72, Math.max(8, (hoveredWeek / 5) * 82))}%`,
+                    top: '-16px',
+                  }}
+                >
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-700">
+                    <span className="font-bold text-white text-xs">{weeklyIntakeData[hoveredWeek].week}</span>
+                    <span className="text-[10px] text-slate-400 font-mono">{weeklyIntakeData[hoveredWeek].dates}</span>
+                  </div>
+                  <div className="space-y-1.5 mt-2">
+                    <div className="flex justify-between items-center text-teal-300">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-[#005c65]" /> Inpatient Admissions:
+                      </span>
+                      <span className="font-bold font-mono">{weeklyIntakeData[hoveredWeek].in} ({weeklyIntakeData[hoveredWeek].inPct})</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sky-300">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-[#1560a4]" /> Outpatient Encounters:
+                      </span>
+                      <span className="font-bold font-mono">{weeklyIntakeData[hoveredWeek].out} ({weeklyIntakeData[hoveredWeek].outPct})</span>
+                    </div>
+                    <div className="pt-1.5 mt-1 border-t border-slate-800 flex justify-between text-[10px] text-slate-400">
+                      <span>Bed Capacity: <b className="text-white">{weeklyIntakeData[hoveredWeek].occupancy}</b></span>
+                      <span className="text-emerald-400">{weeklyIntakeData[hoveredWeek].acuity}</span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <svg className="w-full h-full overflow-visible text-slate-300" preserveAspectRatio="none" viewBox="0 0 800 170">
               <line stroke="currentColor" strokeDasharray="4" strokeOpacity="0.4" x1="0" x2="800" y1="20" y2="20" />
               <line stroke="currentColor" strokeDasharray="4" strokeOpacity="0.4" x1="0" x2="800" y1="70" y2="70" />
               <line stroke="currentColor" strokeDasharray="4" strokeOpacity="0.4" x1="0" x2="800" y1="120" y2="120" />
               <line stroke="currentColor" strokeOpacity="0.6" x1="0" x2="800" y1="165" y2="165" />
 
-              {/* Week 1 */}
-              <rect className="fill-[#005c65] transition-all hover:opacity-80" height="105" rx="4" width="22" x="60" y="60" />
-              <rect className="fill-[#1560a4] transition-all hover:opacity-80" height="130" rx="4" width="22" x="86" y="35" />
-              {/* Week 2 */}
-              <rect className="fill-[#005c65] transition-all hover:opacity-80" height="117" rx="4" width="22" x="180" y="48" />
-              <rect className="fill-[#1560a4] transition-all hover:opacity-80" height="137" rx="4" width="22" x="206" y="28" />
-              {/* Week 3 */}
-              <rect className="fill-[#005c65] transition-all hover:opacity-80" height="130" rx="4" width="22" x="300" y="35" />
-              <rect className="fill-[#1560a4] transition-all hover:opacity-80" height="145" rx="4" width="22" x="326" y="20" />
-              {/* Week 4 */}
-              <rect className="fill-[#005c65] transition-all hover:opacity-80" height="98" rx="4" width="22" x="420" y="67" />
-              <rect className="fill-[#1560a4] transition-all hover:opacity-80" height="122" rx="4" width="22" x="446" y="43" />
-              {/* Week 5 */}
-              <rect className="fill-[#005c65] transition-all hover:opacity-80" height="112" rx="4" width="22" x="540" y="53" />
-              <rect className="fill-[#1560a4] transition-all hover:opacity-80" height="138" rx="4" width="22" x="566" y="27" />
-              {/* Week 6 */}
-              <rect className="fill-[#005c65] transition-all hover:opacity-80" height="125" rx="4" width="22" x="660" y="40" />
-              <rect className="fill-[#1560a4] transition-all hover:opacity-80" height="150" rx="4" width="22" x="686" y="15" />
+              {/* Weekly bar pairs */}
+              {weeklyIntakeData.map((w, idx) => {
+                const isHovered = hoveredWeek === idx;
+                const inY = 165 - w.inHeight;
+                const outY = 165 - w.outHeight;
+                return (
+                  <g 
+                    key={w.week} 
+                    onMouseEnter={() => setHoveredWeek(idx)}
+                    className="cursor-pointer"
+                  >
+                    {/* Hover hotspot backdrop */}
+                    <rect
+                      x={w.xIn - 10}
+                      y={0}
+                      width={68}
+                      height={165}
+                      fill={isHovered ? 'rgba(0, 92, 101, 0.06)' : 'transparent'}
+                      rx={8}
+                      className="transition-colors"
+                    />
+
+                    {/* Inpatient (Teal) Bar */}
+                    {(chartStreamFilter === 'all' || chartStreamFilter === 'inpatient') && (
+                      <rect
+                        className="fill-[#005c65] transition-all duration-300"
+                        height={w.inHeight}
+                        rx={5}
+                        width={22}
+                        x={w.xIn}
+                        y={inY}
+                        opacity={isHovered ? 1 : 0.9}
+                        filter={isHovered ? 'drop-shadow(0 2px 4px rgba(0, 92, 101, 0.4))' : undefined}
+                      />
+                    )}
+
+                    {/* Outpatient (Blue) Bar */}
+                    {(chartStreamFilter === 'all' || chartStreamFilter === 'outpatient') && (
+                      <rect
+                        className="fill-[#1560a4] transition-all duration-300"
+                        height={w.outHeight}
+                        rx={5}
+                        width={22}
+                        x={w.xOut}
+                        y={outY}
+                        opacity={isHovered ? 1 : 0.9}
+                        filter={isHovered ? 'drop-shadow(0 2px 4px rgba(21, 96, 164, 0.4))' : undefined}
+                      />
+                    )}
+                  </g>
+                );
+              })}
             </svg>
           </div>
+
           <div className="flex justify-between items-center text-xs text-slate-500 pt-3 border-t border-slate-100">
-            <span>Week 1 (Oct 01)</span>
-            <span>Week 2 (Oct 08)</span>
-            <span>Week 3 (Oct 15)</span>
-            <span>Week 4 (Oct 22)</span>
-            <span>Week 5 (Oct 29)</span>
-            <span className="font-semibold text-[#005c65]">Current Week</span>
+            {weeklyIntakeData.map((w, idx) => (
+              <span
+                key={w.week}
+                onMouseEnter={() => setHoveredWeek(idx)}
+                className={`cursor-pointer transition-colors ${
+                  hoveredWeek === idx
+                    ? 'font-bold text-[#005c65]'
+                    : idx === 5
+                    ? 'font-semibold text-[#005c65]'
+                    : ''
+                }`}
+              >
+                {w.week}
+              </span>
+            ))}
           </div>
         </div>
 
@@ -877,13 +1044,14 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
 
               <button
                 onClick={() => {
+                  setMasterEhrModalOpen(true);
                   onNotify?.(
-                    'EHR Master Audit Logged',
+                    'EHR Master Chart Opened',
                     `Full electronic chart for ${selectedPatient.name} accessed with timestamped signature.`,
                     'system'
                   );
                 }}
-                className="w-full py-2.5 px-3 rounded-lg bg-[#005c65] hover:bg-[#007782] text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                className="w-full py-2.5 px-3 rounded-lg bg-[#005c65] hover:bg-[#007782] text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95"
               >
                 <FileText className="w-4 h-4" />
                 <span>Open Master EHR Chart</span>
@@ -1487,6 +1655,14 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
           </ModalPortal>
         )}
       </AnimatePresence>
+
+      {/* MASTER EHR CHART MODAL */}
+      <MasterEHRModal
+        isOpen={masterEhrModalOpen}
+        onClose={() => setMasterEhrModalOpen(false)}
+        patient={selectedPatient}
+        onNotify={onNotify}
+      />
     </div>
   );
 };
