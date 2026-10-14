@@ -1,32 +1,32 @@
 import React, { useState } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Users, 
-  Stethoscope, 
-  CalendarCheck, 
-  FlaskConical, 
-  DollarSign, 
-  TrendingUp, 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Clock, 
-  BarChart3, 
-  Download, 
-  Layers, 
-  Zap, 
-  ChevronRight, 
-  Bed, 
+import {
+  Users,
+  Stethoscope,
+  CalendarCheck,
+  FlaskConical,
+  DollarSign,
+  TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  BarChart3,
+  Download,
+  Layers,
+  Zap,
+  ChevronRight,
+  Bed,
   Sparkles,
   RefreshCw,
   Plus,
   X
 } from 'lucide-react';
-import { 
-  mockTriageQueue, 
-  mockDepartmentMetrics 
+import {
+  mockTriageQueue,
+  mockDepartmentMetrics
 } from '../data/mockData';
 import { useClinicDB } from '../lib/db';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
@@ -53,6 +53,119 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [selectedSuiteDetail, setSelectedSuiteDetail] = useState<any>(null);
+
+  // Power BI Inflow vs Discharge Interactive State
+  interface InflowChartPoint {
+    time: string;
+    cx: number;
+    cyInflow: number;
+    cyDischarge: number;
+    inflow: number;
+    discharge: number;
+    wait: string;
+    occupancy: number;
+    badge: string;
+    status: string;
+    highlight?: boolean;
+  }
+
+  const chartDataPoints: Record<'24h' | '7d' | '30d', InflowChartPoint[]> = {
+    '24h': [
+      { time: '06:00 AM', cx: 40, cyInflow: 200, cyDischarge: 220, inflow: 14, discharge: 8, wait: '4.2m', occupancy: 70, badge: 'Shift Start', status: 'Baseline Intake Flow' },
+      { time: '09:00 AM', cx: 180, cyInflow: 135, cyDischarge: 170, inflow: 31, discharge: 16, wait: '7.8m', occupancy: 84, badge: 'Morning Surge', status: 'All Operatories Active' },
+      { time: '12:00 PM', cx: 400, cyInflow: 60, cyDischarge: 110, inflow: 49, discharge: 28, wait: '12.4m', occupancy: 94, badge: 'Peak Surge', status: 'Max Chair Utilization', highlight: true },
+      { time: '03:00 PM', cx: 520, cyInflow: 110, cyDischarge: 130, inflow: 34, discharge: 36, wait: '8.4m', occupancy: 89, badge: 'Afternoon Turnover', status: 'Discharges Equalizing' },
+      { time: '06:00 PM', cx: 640, cyInflow: 130, cyDischarge: 125, inflow: 24, discharge: 29, wait: '6.1m', occupancy: 82, badge: 'Evening Handover', status: 'Post-Op Stable' },
+      { time: '09:00 PM', cx: 780, cyInflow: 45, cyDischarge: 80, inflow: 42, discharge: 38, wait: '7.0m', occupancy: 88, badge: 'Emergency Active', status: 'On-Call Inflow Heavy', highlight: true },
+    ],
+    '7d': [
+      { time: 'Mon', cx: 60, cyInflow: 130, cyDischarge: 160, inflow: 380, discharge: 340, wait: '7.2m', occupancy: 88, badge: 'High Intake', status: 'Post-Weekend Inflow' },
+      { time: 'Tue', cx: 180, cyInflow: 105, cyDischarge: 135, inflow: 410, discharge: 390, wait: '8.0m', occupancy: 91, badge: 'Surgical Day', status: 'Full OR Load' },
+      { time: 'Wed', cx: 320, cyInflow: 50, cyDischarge: 90, inflow: 465, discharge: 420, wait: '11.5m', occupancy: 96, badge: 'Weekly Peak', status: 'Surge Capacity Active', highlight: true },
+      { time: 'Thu', cx: 460, cyInflow: 90, cyDischarge: 120, inflow: 425, discharge: 415, wait: '8.4m', occupancy: 90, badge: 'Endo Focus', status: 'Steady Flow' },
+      { time: 'Fri', cx: 580, cyInflow: 80, cyDischarge: 100, inflow: 440, discharge: 450, wait: '7.8m', occupancy: 89, badge: 'Turnover Day', status: 'Rapid Discharges' },
+      { time: 'Sat', cx: 680, cyInflow: 160, cyDischarge: 175, inflow: 290, discharge: 270, wait: '5.4m', occupancy: 78, badge: 'Weekend Urgent', status: 'Ambulatory Triage' },
+      { time: 'Sun', cx: 780, cyInflow: 190, cyDischarge: 210, inflow: 210, discharge: 195, wait: '4.2m', occupancy: 70, badge: 'Baseline', status: 'Maintenance Roster' },
+    ],
+    '30d': [
+      { time: 'Wk 1', cx: 100, cyInflow: 140, cyDischarge: 160, inflow: 2450, discharge: 2310, wait: '7.5m', occupancy: 87, badge: 'Period Opening', status: 'Normal Intake' },
+      { time: 'Wk 2', cx: 300, cyInflow: 90, cyDischarge: 120, inflow: 2780, discharge: 2620, wait: '8.8m', occupancy: 92, badge: 'Optimal Surge', status: 'Surgical Inflow High' },
+      { time: 'Wk 3', cx: 500, cyInflow: 50, cyDischarge: 80, inflow: 3120, discharge: 2950, wait: '12.0m', occupancy: 97, badge: 'Monthly High', status: 'Peak Capacity', highlight: true },
+      { time: 'Wk 4', cx: 720, cyInflow: 110, cyDischarge: 135, inflow: 2650, discharge: 2580, wait: '8.1m', occupancy: 89, badge: 'Rebalance Period', status: 'Steady State' },
+    ],
+  };
+
+  const chartPaths = {
+    '24h': {
+      inflowArea: 'M0,200 Q100,160 200,130 T400,60 T600,110 T800,45 L800,240 L0,240 Z',
+      inflowLine: 'M0,200 Q100,160 200,130 T400,60 T600,110 T800,45',
+      dischargeArea: 'M0,220 Q120,200 220,160 T420,110 T620,130 T800,80 L800,240 L0,240 Z',
+      dischargeLine: 'M0,220 Q120,200 220,160 T420,110 T620,130 T800,80',
+    },
+    '7d': {
+      inflowArea: 'M0,150 Q120,120 240,80 T480,70 T700,140 T800,180 L800,240 L0,240 Z',
+      inflowLine: 'M0,150 Q120,120 240,80 T480,70 T700,140 T800,180',
+      dischargeArea: 'M0,180 Q120,150 240,110 T480,90 T700,160 T800,200 L800,240 L0,240 Z',
+      dischargeLine: 'M0,180 Q120,150 240,110 T480,90 T700,160 T800,200',
+    },
+    '30d': {
+      inflowArea: 'M0,160 Q200,120 400,60 T700,90 T800,120 L800,240 L0,240 Z',
+      inflowLine: 'M0,160 Q200,120 400,60 T700,90 T800,120',
+      dischargeArea: 'M0,180 Q200,140 400,90 T700,120 T800,140 L800,240 L0,240 Z',
+      dischargeLine: 'M0,180 Q200,140 400,90 T700,120 T800,140',
+    },
+  };
+
+  const [hoveredChartPoint, setHoveredChartPoint] = useState<InflowChartPoint | null>(null);
+  const currentChartPoints = chartDataPoints[timeFilter];
+
+  // Persistent Department Bed & Chair Capacity
+  const STORAGE_KEY_DEPT_METRICS = 'smileclinic_dashboard_department_metrics';
+  const [departmentMetrics, setDepartmentMetrics] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_DEPT_METRICS);
+      return saved ? JSON.parse(saved) : mockDepartmentMetrics;
+    } catch {
+      return mockDepartmentMetrics;
+    }
+  });
+
+  const [hasCustomCapacity, setHasCustomCapacity] = useState(() => {
+    return Boolean(localStorage.getItem(STORAGE_KEY_DEPT_METRICS));
+  });
+
+  const [isRebalancing, setIsRebalancing] = useState(false);
+
+  const handleRebalanceOperatories = () => {
+    setIsRebalancing(true);
+    setTimeout(() => {
+      const optimized = departmentMetrics.map((dept: any) => {
+        if (dept.id === 'dep-1') {
+          // Emergency Dental rebalances from 28 down to 25
+          const newOccupied = Math.max(15, dept.occupied - 3);
+          return { ...dept, occupied: newOccupied, percentage: Math.round((newOccupied / dept.capacity) * 100) };
+        }
+        if (dept.id === 'dep-3') {
+          // Restorative absorbs 2 buffered cases
+          const newOccupied = Math.min(dept.capacity, dept.occupied + 1);
+          return { ...dept, occupied: newOccupied, percentage: Math.round((newOccupied / dept.capacity) * 100) };
+        }
+        return dept;
+      });
+      setDepartmentMetrics(optimized);
+      localStorage.setItem(STORAGE_KEY_DEPT_METRICS, JSON.stringify(optimized));
+      setHasCustomCapacity(true);
+      setIsRebalancing(false);
+      showToast('success', 'AI Operatory Buffer Rebalanced', 'Waitlist autogap buffer reallocated 3 emergency overflow cases into Suite 3 restorative slots.');
+    }, 600);
+  };
+
+  const handleResetCapacity = () => {
+    localStorage.removeItem(STORAGE_KEY_DEPT_METRICS);
+    setDepartmentMetrics(mockDepartmentMetrics);
+    setHasCustomCapacity(false);
+    showToast('info', 'Capacity Reset', 'Department bed and chair capacity restored to clinical defaults.');
+  };
 
   // Dynamic calculations from real-time DB
   const onDutyDoctors = doctors.filter((d) => d.status === 'On Duty' || d.status === 'In Surgery' || d.status === 'On Rounds');
@@ -108,11 +221,10 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
                   setTimeFilter(t);
                   showToast('info', 'Time Filter Updated', `Viewing hospital metrics for ${t === '24h' ? 'today' : t}`);
                 }}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  timeFilter === t
+                className={`px-3 py-1.5 rounded-lg transition-all ${timeFilter === t
                     ? 'bg-white text-primary font-bold shadow-sm'
                     : 'text-slate-600 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 {t === '24h' ? 'Today' : t === '7d' ? '7 Days' : '30 Days'}
               </button>
@@ -278,7 +390,7 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
               </div>
               <p className="text-xs text-slate-500 mt-0.5">Continuous hourly patient intake tracking across all 6 treatment suites</p>
             </div>
-            
+
             <div className="flex items-center gap-4 text-xs font-semibold">
               <span className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-primary"></span>
@@ -393,9 +505,8 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
                       initial={{ width: 0 }}
                       animate={{ width: `${dept.percentage}%` }}
                       transition={{ duration: 0.6 }}
-                      className={`h-full rounded-full ${
-                        dept.percentage >= 90 ? 'bg-red-500' : dept.percentage >= 80 ? 'bg-amber-500' : 'bg-primary'
-                      }`}
+                      className={`h-full rounded-full ${dept.percentage >= 90 ? 'bg-red-500' : dept.percentage >= 80 ? 'bg-amber-500' : 'bg-primary'
+                        }`}
                     />
                   </div>
                   <div className="flex justify-between text-[10px] text-slate-400">
@@ -452,7 +563,7 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
 
           <div className="divide-y divide-slate-100 dark:divide-slate-800 pt-2">
             {orSuites.map((suite) => (
-              <div 
+              <div
                 key={suite.id}
                 onClick={() => setSelectedSuiteDetail(suite)}
                 className="py-3.5 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 p-2 rounded-xl transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3"
@@ -473,15 +584,14 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
                 </div>
 
                 <div className="flex sm:flex-col items-center sm:items-end justify-between shrink-0">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    suite.status === 'In Surgery'
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${suite.status === 'In Surgery'
                       ? 'bg-amber-100 text-amber-800 border border-amber-200'
                       : suite.status === 'Turnover Cleaning'
-                      ? 'bg-sky-100 text-sky-800 border border-sky-200'
-                      : suite.status === 'Pre-Op Prep'
-                      ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                      : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                  }`}>
+                        ? 'bg-sky-100 text-sky-800 border border-sky-200'
+                        : suite.status === 'Pre-Op Prep'
+                          ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                          : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    }`}>
                     {suite.status}
                   </span>
                   <span className="text-[10px] text-slate-400 mt-1 font-medium">
@@ -532,13 +642,12 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
                   </div>
 
                   <div className="text-right shrink-0">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                      triage.acuity === 'Immediate'
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${triage.acuity === 'Immediate'
                         ? 'bg-red-100 text-red-700'
                         : triage.acuity === 'Urgent'
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-emerald-100 text-emerald-700'
-                    }`}>
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-emerald-100 text-emerald-700'
+                      }`}>
                       {triage.acuity}
                     </span>
                     <span className="text-[10px] text-slate-400 block mt-1 font-medium">
@@ -566,7 +675,7 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
       <AnimatePresence>
         {broadcastModalOpen && (
           <ModalPortal>
-            <div 
+            <div
               onClick={() => setBroadcastModalOpen(false)}
               className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm"
             >
@@ -630,7 +739,7 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
       <AnimatePresence>
         {selectedSuiteDetail && (
           <ModalPortal>
-            <div 
+            <div
               onClick={() => setSelectedSuiteDetail(null)}
               className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm"
             >
@@ -679,8 +788,8 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
                       <span>{selectedSuiteDetail.progressPercent}%</span>
                     </div>
                     <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                      <div 
-                        className="bg-primary h-full rounded-full transition-all duration-500" 
+                      <div
+                        className="bg-primary h-full rounded-full transition-all duration-500"
                         style={{ width: `${selectedSuiteDetail.progressPercent}%` }}
                       />
                     </div>

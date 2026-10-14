@@ -20,6 +20,11 @@ import {
   ShieldAlert,
   ArrowUpRight,
   Filter,
+  Sparkles,
+  RefreshCw,
+  Sliders,
+  PieChart,
+  Info,
 } from 'lucide-react';
 import { mockBillingClaims } from '../data/mockData';
 import { BillingClaim, ClaimStatus } from '../types';
@@ -32,6 +37,39 @@ interface BillingProps {
   onOpenExport?: () => void;
 }
 
+export interface BillingMonthPoint {
+  month: string;
+  cx: number;
+  cyBilled: number;
+  cyReimbursed: number;
+  billed: number;
+  reimbursed: number;
+  cleanRate: string;
+  eraRate: string;
+  variance: number;
+  claimsCount: number;
+  isCurrent?: boolean;
+}
+
+export interface PayerSegment {
+  id: string;
+  name: string;
+  pct: number;
+  amount: number;
+  claims: number;
+  avgDays: number;
+  color: string;
+  dashArray: string;
+  dashOffset: number;
+}
+
+const DEFAULT_DENIAL_CAUSES = [
+  { id: 'dc-1', name: 'Missing Radiograph / Narrative', percentage: 35, color: 'bg-red-500', barColor: '#ef4444', claimsBlocked: 14, atRiskAmount: 64200 },
+  { id: 'dc-2', name: 'Coding Discrepancy (CDT vs CPT)', percentage: 28, color: 'bg-blue-600', barColor: '#2563eb', claimsBlocked: 11, atRiskAmount: 48500 },
+  { id: 'dc-3', name: 'Max Benefit Frequency Exceeded', percentage: 22, color: 'bg-[#005c65]', barColor: '#005c65', claimsBlocked: 9, atRiskAmount: 38100 },
+  { id: 'dc-4', name: 'Timely Filing Limit', percentage: 15, color: 'bg-slate-400', barColor: '#94a3b8', claimsBlocked: 6, atRiskAmount: 24300 },
+];
+
 export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpenExport }) => {
   const outletCtx = useOutletContext<{
     showToast?: (type: 'success' | 'error' | 'info', title: string, desc?: string) => void;
@@ -41,6 +79,96 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
   const [selectedClaim, setSelectedClaim] = useState<BillingClaim | null>(mockBillingClaims[0]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | ClaimStatus>('ALL');
+
+  // Power BI Financial Analytics Interactive State
+  const [selectedFY, setSelectedFY] = useState<'FY 2026' | 'FY 2025' | 'Q4'>('FY 2026');
+  const [hoveredBillingMonth, setHoveredBillingMonth] = useState<BillingMonthPoint | null>(null);
+  const [hoveredPayer, setHoveredPayer] = useState<PayerSegment | null>(null);
+
+  // Denial Root Causes State with LocalStorage Persistence
+  const STORAGE_KEY_DENIALS = 'smileclinic_billing_denial_causes';
+  const [denialCauses, setDenialCauses] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_DENIALS);
+      return saved ? JSON.parse(saved) : DEFAULT_DENIAL_CAUSES;
+    } catch {
+      return DEFAULT_DENIAL_CAUSES;
+    }
+  });
+
+  const handleRemediateDenial = (id: string, name: string) => {
+    const updated = denialCauses.map((dc: any) => {
+      if (dc.id === id) {
+        const newPct = Math.max(5, dc.percentage - 12);
+        return { ...dc, percentage: newPct, claimsBlocked: Math.max(1, dc.claimsBlocked - 4), atRiskAmount: Math.round(dc.atRiskAmount * 0.6) };
+      }
+      return dc;
+    });
+    setDenialCauses(updated);
+    localStorage.setItem(STORAGE_KEY_DENIALS, JSON.stringify(updated));
+    outletCtx?.showToast?.('success', 'AI Denial Auto-Remediation Executed', `Applied pre-submission radiograph/narrative batch validation to resolve "${name}".`);
+  };
+
+  const handleResetDenials = () => {
+    localStorage.removeItem(STORAGE_KEY_DENIALS);
+    setDenialCauses(DEFAULT_DENIAL_CAUSES);
+    outletCtx?.showToast?.('info', 'Denial Benchmarks Reset', 'Root cause percentages restored to clinical default baseline.');
+  };
+
+  const payerSegments: PayerSegment[] = [
+    { id: 'delta', name: 'Delta Dental Premier PPO', pct: 38, amount: 563500, claims: 182, avgDays: 12.4, color: '#005c65', dashArray: '38, 100', dashOffset: 0 },
+    { id: 'metlife', name: 'MetLife PDP Plus', pct: 24, amount: 355900, claims: 114, avgDays: 14.8, color: '#2563eb', dashArray: '24, 100', dashOffset: -38 },
+    { id: 'cigna', name: 'Cigna Dental Total Cigna DPPO', pct: 22, amount: 326200, claims: 98, avgDays: 13.2, color: '#0d9488', dashArray: '22, 100', dashOffset: -62 },
+    { id: 'selfpay', name: 'Self-Pay / Patient Copay', pct: 16, amount: 237300, claims: 76, avgDays: 1.0, color: '#94a3b8', dashArray: '16, 100', dashOffset: -84 },
+  ];
+
+  const monthlyDataPoints: Record<'FY 2026' | 'FY 2025' | 'Q4', BillingMonthPoint[]> = {
+    'FY 2026': [
+      { month: 'May', cx: 20, cyBilled: 130, cyReimbursed: 150, billed: 1120000, reimbursed: 1050000, cleanRate: '97.2%', eraRate: '92.4%', variance: 70000, claimsCount: 242 },
+      { month: 'Jun', cx: 140, cyBilled: 105, cyReimbursed: 130, billed: 1210000, reimbursed: 1145000, cleanRate: '97.6%', eraRate: '93.1%', variance: 65000, claimsCount: 265 },
+      { month: 'Jul', cx: 260, cyBilled: 70, cyReimbursed: 95, billed: 1295000, reimbursed: 1230000, cleanRate: '97.9%', eraRate: '93.8%', variance: 65000, claimsCount: 280 },
+      { month: 'Aug', cx: 380, cyBilled: 50, cyReimbursed: 75, billed: 1380000, reimbursed: 1310000, cleanRate: '98.0%', eraRate: '94.2%', variance: 70000, claimsCount: 298 },
+      { month: 'Sep', cx: 500, cyBilled: 35, cyReimbursed: 52, billed: 1440000, reimbursed: 1375000, cleanRate: '98.1%', eraRate: '94.5%', variance: 65000, claimsCount: 308 },
+      { month: 'Oct (Current)', cx: 620, cyBilled: 22, cyReimbursed: 38, billed: 1482900, reimbursed: 1429515, cleanRate: '98.1%', eraRate: '94.7%', variance: 53385, claimsCount: 318, isCurrent: true },
+    ],
+    'FY 2025': [
+      { month: 'May', cx: 20, cyBilled: 150, cyReimbursed: 170, billed: 980000, reimbursed: 910000, cleanRate: '95.4%', eraRate: '89.2%', variance: 70000, claimsCount: 210 },
+      { month: 'Jun', cx: 140, cyBilled: 135, cyReimbursed: 155, billed: 1050000, reimbursed: 985000, cleanRate: '96.1%', eraRate: '90.5%', variance: 65000, claimsCount: 228 },
+      { month: 'Jul', cx: 260, cyBilled: 110, cyReimbursed: 130, billed: 1120000, reimbursed: 1060000, cleanRate: '96.5%', eraRate: '91.2%', variance: 60000, claimsCount: 245 },
+      { month: 'Aug', cx: 380, cyBilled: 95, cyReimbursed: 115, billed: 1180000, reimbursed: 1120000, cleanRate: '96.8%', eraRate: '91.8%', variance: 60000, claimsCount: 256 },
+      { month: 'Sep', cx: 500, cyBilled: 80, cyReimbursed: 100, billed: 1240000, reimbursed: 1180000, cleanRate: '97.0%', eraRate: '92.3%', variance: 60000, claimsCount: 270 },
+      { month: 'Oct', cx: 620, cyBilled: 65, cyReimbursed: 85, billed: 1310000, reimbursed: 1255000, cleanRate: '97.3%', eraRate: '93.0%', variance: 55000, claimsCount: 285 },
+    ],
+    'Q4': [
+      { month: 'Aug', cx: 50, cyBilled: 90, cyReimbursed: 110, billed: 460000, reimbursed: 435000, cleanRate: '98.0%', eraRate: '94.2%', variance: 25000, claimsCount: 98 },
+      { month: 'Sep', cx: 240, cyBilled: 65, cyReimbursed: 85, billed: 480000, reimbursed: 458000, cleanRate: '98.1%', eraRate: '94.5%', variance: 22000, claimsCount: 105 },
+      { month: 'Oct (M-T-D)', cx: 430, cyBilled: 35, cyReimbursed: 52, billed: 542900, reimbursed: 536515, cleanRate: '98.1%', eraRate: '94.7%', variance: 6385, claimsCount: 115, isCurrent: true },
+      { month: 'Nov (Proj)', cx: 620, cyBilled: 20, cyReimbursed: 35, billed: 560000, reimbursed: 545000, cleanRate: '98.5%', eraRate: '95.0%', variance: 15000, claimsCount: 120 },
+    ],
+  };
+
+  const billingPaths = {
+    'FY 2026': {
+      billedArea: 'M 20 130 C 120 110, 180 80, 260 70 C 340 60, 420 40, 500 35 C 560 30, 600 24, 620 22 L 620 180 L 20 180 Z',
+      billedLine: 'M 20 130 C 120 110, 180 80, 260 70 C 340 60, 420 40, 500 35 C 560 30, 600 24, 620 22',
+      reimbursedArea: 'M 20 150 C 120 135, 180 105, 260 95 C 340 85, 420 60, 500 52 C 560 48, 600 42, 620 38 L 620 180 L 20 180 Z',
+      reimbursedLine: 'M 20 150 C 120 135, 180 105, 260 95 C 340 85, 420 60, 500 52 C 560 48, 600 42, 620 38',
+    },
+    'FY 2025': {
+      billedArea: 'M 20 150 C 120 135, 180 110, 260 110 C 340 95, 420 80, 500 80 C 560 65, 600 65, 620 65 L 620 180 L 20 180 Z',
+      billedLine: 'M 20 150 C 120 135, 180 110, 260 110 C 340 95, 420 80, 500 80 C 560 65, 600 65, 620 65',
+      reimbursedArea: 'M 20 170 C 120 155, 180 130, 260 130 C 340 115, 420 100, 500 100 C 560 85, 600 85, 620 85 L 620 180 L 20 180 Z',
+      reimbursedLine: 'M 20 170 C 120 155, 180 130, 260 130 C 340 115, 420 100, 500 100 C 560 85, 600 85, 620 85',
+    },
+    'Q4': {
+      billedArea: 'M 50 90 C 150 75, 240 65, 340 50 C 430 35, 520 25, 620 20 L 620 180 L 50 180 Z',
+      billedLine: 'M 50 90 C 150 75, 240 65, 340 50 C 430 35, 520 25, 620 20',
+      reimbursedArea: 'M 50 110 C 150 95, 240 85, 340 70 C 430 52, 520 40, 620 35 L 620 180 L 50 180 Z',
+      reimbursedLine: 'M 50 110 C 150 95, 240 85, 340 70 C 430 52, 520 40, 620 35',
+    },
+  };
+
+  const currentMonthlyPoints = monthlyDataPoints[selectedFY];
 
   // Modals
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
@@ -310,12 +438,36 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Main Trend Graph (Col 8) */}
         <div className="lg:col-span-8 bg-white p-5 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
             <div>
-              <h2 className="text-base font-bold text-slate-900">Revenue Recovery &amp; Billed Comparison</h2>
-              <p className="text-xs text-slate-500">6-Month longitudinal review of Gross Invoiced vs Approved Reimbursements</p>
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-[#007782]" />
+                <h2 className="text-base font-bold text-slate-900">Revenue Recovery &amp; Billed Comparison</h2>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">6-Month longitudinal review of Gross Invoiced vs Approved Reimbursements</p>
             </div>
-            <div className="flex items-center gap-4 text-xs">
+
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              {/* FY Slicer Tabs */}
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                {(['FY 2026', 'FY 2025', 'Q4'] as const).map((fy) => (
+                  <button
+                    key={fy}
+                    onClick={() => {
+                      setSelectedFY(fy);
+                      setHoveredBillingMonth(null);
+                    }}
+                    className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${
+                      selectedFY === fy
+                        ? 'bg-white text-[#005c65] shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    {fy}
+                  </button>
+                ))}
+              </div>
+
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#005c65]" />
                 <span className="text-slate-700 font-medium">Billed</span>
@@ -324,35 +476,68 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
                 <span className="w-2.5 h-2.5 rounded-full bg-[#1560a4]" />
                 <span className="text-slate-700 font-medium">Reimbursed</span>
               </div>
-              <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-500 font-semibold">FY 2026</span>
             </div>
           </div>
 
-          {/* SVG Chart */}
+          {/* SVG Chart with Power BI Interactive Tooltip Preview */}
           <div className="w-full h-56 relative pt-2">
-            <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 640 220">
+            <svg 
+              className="w-full h-full overflow-visible" 
+              preserveAspectRatio="none" 
+              viewBox="0 0 640 220"
+              onMouseLeave={() => setHoveredBillingMonth(null)}
+            >
               <defs>
                 <linearGradient id="primaryAreaGrad" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#007782" stopOpacity="0.25" />
+                  <stop offset="0%" stopColor="#007782" stopOpacity="0.28" />
                   <stop offset="100%" stopColor="#007782" stopOpacity="0.0" />
                 </linearGradient>
                 <linearGradient id="secondaryAreaGrad" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#1560a4" stopOpacity="0.2" />
+                  <stop offset="0%" stopColor="#1560a4" stopOpacity="0.22" />
                   <stop offset="100%" stopColor="#1560a4" stopOpacity="0.0" />
                 </linearGradient>
+                <filter id="glowBilling" x="-50%" y="-50%" width="200%" height="200%">
+                  <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#007782" floodOpacity="0.5" />
+                </filter>
               </defs>
+
+              {/* Grid Lines */}
               <line stroke="#ebeef0" strokeDasharray="4" strokeWidth="1" x1="0" x2="640" y1="20" y2="20" />
               <line stroke="#ebeef0" strokeDasharray="4" strokeWidth="1" x1="0" x2="640" y1="70" y2="70" />
               <line stroke="#ebeef0" strokeDasharray="4" strokeWidth="1" x1="0" x2="640" y1="120" y2="120" />
               <line stroke="#ebeef0" strokeDasharray="4" strokeWidth="1" x1="0" x2="640" y1="170" y2="170" />
 
+              {/* Hover Cursor Guideline */}
+              {hoveredBillingMonth && (
+                <motion.line
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  x1={hoveredBillingMonth.cx}
+                  y1="10"
+                  x2={hoveredBillingMonth.cx}
+                  y2="190"
+                  stroke="#005c65"
+                  strokeWidth="1.5"
+                  strokeDasharray="4 4"
+                  opacity="0.8"
+                />
+              )}
+
               {/* Billed Area Path */}
-              <path
-                d="M 20 130 C 120 110, 180 80, 260 70 C 340 60, 420 40, 500 35 C 560 30, 600 24, 620 22 L 620 180 L 20 180 Z"
+              <motion.path
+                key={`billed-area-${selectedFY}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                d={billingPaths[selectedFY].billedArea}
                 fill="url(#primaryAreaGrad)"
               />
-              <path
-                d="M 20 130 C 120 110, 180 80, 260 70 C 340 60, 420 40, 500 35 C 560 30, 600 24, 620 22"
+              <motion.path
+                key={`billed-line-${selectedFY}`}
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                d={billingPaths[selectedFY].billedLine}
                 fill="none"
                 stroke="#007782"
                 strokeLinecap="round"
@@ -360,12 +545,20 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
               />
 
               {/* Reimbursed Area Path */}
-              <path
-                d="M 20 150 C 120 135, 180 105, 260 95 C 340 85, 420 60, 500 52 C 560 48, 600 42, 620 38 L 620 180 L 20 180 Z"
+              <motion.path
+                key={`reimb-area-${selectedFY}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                d={billingPaths[selectedFY].reimbursedArea}
                 fill="url(#secondaryAreaGrad)"
               />
-              <path
-                d="M 20 150 C 120 135, 180 105, 260 95 C 340 85, 420 60, 500 52 C 560 48, 600 42, 620 38"
+              <motion.path
+                key={`reimb-line-${selectedFY}`}
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                d={billingPaths[selectedFY].reimbursedLine}
                 fill="none"
                 stroke="#1560a4"
                 strokeDasharray="5 4"
@@ -373,36 +566,161 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
                 strokeWidth="3"
               />
 
-              {/* Points */}
-              <circle cx="260" cy="70" fill="#ffffff" r="4.5" stroke="#007782" strokeWidth="2.5" />
-              <circle cx="500" cy="35" fill="#ffffff" r="4.5" stroke="#007782" strokeWidth="2.5" />
-              <circle cx="620" cy="22" fill="#007782" r="5" stroke="#ffffff" strokeWidth="2" />
-              <circle cx="260" cy="95" fill="#ffffff" r="4" stroke="#1560a4" strokeWidth="2" />
-              <circle cx="500" cy="52" fill="#ffffff" r="4" stroke="#1560a4" strokeWidth="2" />
-              <circle cx="620" cy="38" fill="#1560a4" r="4.5" stroke="#ffffff" strokeWidth="2" />
+              {/* Interactive Month Nodes */}
+              {currentMonthlyPoints.map((pt, idx) => {
+                const isHovered = hoveredBillingMonth?.month === pt.month;
+                return (
+                  <g 
+                    key={idx}
+                    className="cursor-pointer"
+                    onMouseEnter={() => setHoveredBillingMonth(pt)}
+                  >
+                    {/* Hover Hitbox */}
+                    <rect
+                      x={pt.cx - 22}
+                      y={0}
+                      width={44}
+                      height={200}
+                      fill="transparent"
+                    />
+
+                    {/* Billed Node */}
+                    <circle
+                      cx={pt.cx}
+                      cy={pt.cyBilled}
+                      r={isHovered ? 7 : pt.isCurrent ? 5.5 : 4.5}
+                      fill={isHovered ? '#007782' : pt.isCurrent ? '#007782' : '#ffffff'}
+                      stroke="#007782"
+                      strokeWidth={isHovered ? 3 : 2.5}
+                      className="transition-all duration-200"
+                      filter={isHovered ? 'url(#glowBilling)' : undefined}
+                    />
+
+                    {/* Reimbursed Node */}
+                    <circle
+                      cx={pt.cx}
+                      cy={pt.cyReimbursed}
+                      r={isHovered ? 6 : pt.isCurrent ? 5 : 4}
+                      fill={isHovered ? '#1560a4' : pt.isCurrent ? '#1560a4' : '#ffffff'}
+                      stroke="#1560a4"
+                      strokeWidth={2}
+                      className="transition-all duration-200"
+                    />
+
+                    {/* Concentric Ping on Hover */}
+                    {isHovered && (
+                      <circle
+                        cx={pt.cx}
+                        cy={pt.cyBilled}
+                        r={12}
+                        fill="none"
+                        stroke="#007782"
+                        strokeWidth="1.5"
+                        strokeOpacity="0.5"
+                        className="animate-ping"
+                      />
+                    )}
+                  </g>
+                );
+              })}
             </svg>
 
+            {/* Power BI Floating Data Preview Card */}
+            <AnimatePresence>
+              {hoveredBillingMonth && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  style={{
+                    left: `${Math.min(Math.max((hoveredBillingMonth.cx / 640) * 100, 15), 78)}%`,
+                    top: '5px'
+                  }}
+                  className="absolute -translate-x-1/2 z-20 pointer-events-none w-64 bg-slate-900/95 backdrop-blur-md text-white rounded-xl shadow-2xl border border-slate-700/80 p-3.5 text-xs"
+                >
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-200">
+                      <Clock className="w-3.5 h-3.5 text-teal-400" />
+                      <span>{hoveredBillingMonth.month}</span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                      {hoveredBillingMonth.isCurrent ? 'Current Period' : selectedFY}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between bg-slate-800/60 p-1.5 rounded-lg">
+                      <span className="flex items-center gap-1.5 text-slate-300">
+                        <span className="w-2 h-2 rounded-full bg-[#007782]" />
+                        Gross Invoiced:
+                      </span>
+                      <span className="font-bold text-white text-sm">
+                        ${hoveredBillingMonth.billed.toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between bg-slate-800/60 p-1.5 rounded-lg">
+                      <span className="flex items-center gap-1.5 text-slate-300">
+                        <span className="w-2 h-2 rounded-full bg-[#1560a4]" />
+                        Reimbursed:
+                      </span>
+                      <span className="font-bold text-blue-300 text-sm">
+                        ${hoveredBillingMonth.reimbursed.toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5 pt-1 text-[11px] text-slate-400">
+                      <div>
+                        <span>Clean Claim Pass:</span>
+                        <span className="block font-bold text-emerald-400">{hoveredBillingMonth.cleanRate}</span>
+                      </div>
+                      <div>
+                        <span>Adjudicated:</span>
+                        <span className="block font-bold text-slate-200">{hoveredBillingMonth.claimsCount} claims</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-1.5 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
+                      <span>Remittance (ERA): <b className="text-white">{hoveredBillingMonth.eraRate}</b></span>
+                      <span className="text-teal-400 font-semibold">Yield: {((hoveredBillingMonth.reimbursed / hoveredBillingMonth.billed) * 100).toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Month Labels with Interactive Clicks */}
             <div className="flex justify-between text-slate-500 text-xs pt-2">
-              <span>May</span>
-              <span>Jun</span>
-              <span>Jul</span>
-              <span>Aug</span>
-              <span>Sep</span>
-              <span className="text-[#005c65] font-bold">Oct (Current)</span>
+              {currentMonthlyPoints.map((pt, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setHoveredBillingMonth(pt)}
+                  className={`transition-colors hover:text-[#005c65] ${
+                    pt.isCurrent
+                      ? 'text-[#005c65] font-bold'
+                      : hoveredBillingMonth?.month === pt.month
+                      ? 'text-[#005c65] font-semibold underline'
+                      : ''
+                  }`}
+                >
+                  {pt.month}
+                </button>
+              ))}
             </div>
           </div>
 
           {/* Quick KPI Substrip */}
           <div className="grid grid-cols-3 gap-3 pt-3 mt-2 bg-slate-50 rounded-lg p-3 text-center border border-slate-100">
-            <div>
+            <div className="hover:bg-white p-1 rounded-md transition-all cursor-pointer">
               <span className="text-[11px] text-slate-500 block">Avg Clean Claim Rate</span>
               <span className="text-base font-bold text-[#005c65]">98.1%</span>
             </div>
-            <div>
+            <div className="hover:bg-white p-1 rounded-md transition-all cursor-pointer">
               <span className="text-[11px] text-slate-500 block">Electronic Remittance (ERA)</span>
               <span className="text-base font-bold text-blue-700">94.7%</span>
             </div>
-            <div>
+            <div className="hover:bg-white p-1 rounded-md transition-all cursor-pointer">
               <span className="text-[11px] text-slate-500 block">Write-Off Rate</span>
               <span className="text-base font-bold text-teal-700">1.2%</span>
             </div>
@@ -412,15 +730,22 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
         {/* Payer Mix & Denial Analytics (Col 4) */}
         <div className="lg:col-span-4 flex flex-col gap-4">
           {/* Payer Breakdown Card */}
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between">
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between relative">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-bold text-slate-900">Payer Mix Breakdown</h3>
-              <span className="text-xs text-slate-400">Q4 Invoiced</span>
+              <div className="flex items-center gap-1.5">
+                <PieChart className="w-4 h-4 text-[#005c65]" />
+                <h3 className="text-base font-bold text-slate-900">Payer Mix Breakdown</h3>
+              </div>
+              <span className="text-xs text-slate-400 font-semibold">Q4 Invoiced</span>
             </div>
 
             <div className="flex items-center gap-4 my-2">
-              <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+              <div 
+                className="relative w-28 h-28 shrink-0 flex items-center justify-center cursor-pointer"
+                onMouseLeave={() => setHoveredPayer(null)}
+              >
+                <svg className="w-full h-full -rotate-90 overflow-visible" viewBox="0 0 36 36">
+                  {/* Background Track */}
                   <path
                     className="text-slate-100"
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -428,129 +753,154 @@ export const Billing: React.FC<BillingProps> = ({ onNotify, onOpenPowerBI, onOpe
                     stroke="currentColor"
                     strokeWidth="4.5"
                   />
-                  {/* Delta Dental 38% */}
-                  <path
-                    className="text-[#005c65]"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeDasharray="38, 100"
-                    strokeWidth="4.5"
-                  />
-                  {/* MetLife 24% */}
-                  <path
-                    className="text-blue-600"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeDasharray="24, 100"
-                    strokeDashoffset="-38"
-                    strokeWidth="4.5"
-                  />
-                  {/* Cigna 22% */}
-                  <path
-                    className="text-teal-500"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeDasharray="22, 100"
-                    strokeDashoffset="-62"
-                    strokeWidth="4.5"
-                  />
-                  {/* Self-Pay 16% */}
-                  <path
-                    className="text-slate-300"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeDasharray="16, 100"
-                    strokeDashoffset="-84"
-                    strokeWidth="4.5"
-                  />
+                  {/* Payer Segments */}
+                  {payerSegments.map((seg) => {
+                    const isHovered = hoveredPayer?.id === seg.id;
+                    return (
+                      <path
+                        key={seg.id}
+                        onMouseEnter={() => setHoveredPayer(seg)}
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none"
+                        stroke={seg.color}
+                        strokeDasharray={seg.dashArray}
+                        strokeDashoffset={seg.dashOffset}
+                        strokeWidth={isHovered ? 6 : 4.5}
+                        className="transition-all duration-200 cursor-pointer"
+                      />
+                    );
+                  })}
                 </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                  <span className="text-xs font-bold text-slate-800">100%</span>
-                  <span className="text-[10px] text-slate-400">Pool</span>
+
+                {/* Donut Center Display */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-1">
+                  {hoveredPayer ? (
+                    <motion.div
+                      key={hoveredPayer.id}
+                      initial={{ scale: 0.85, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="flex flex-col items-center"
+                    >
+                      <span className="text-xs font-bold text-slate-900 leading-tight">
+                        {hoveredPayer.pct}%
+                      </span>
+                      <span className="text-[9px] font-semibold text-primary truncate max-w-[70px]">
+                        ${(hoveredPayer.amount / 1000).toFixed(0)}k
+                      </span>
+                    </motion.div>
+                  ) : (
+                    <>
+                      <span className="text-xs font-bold text-slate-800">100%</span>
+                      <span className="text-[10px] text-slate-400">Pool</span>
+                    </>
+                  )}
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1 flex-1 min-w-0 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 truncate">
-                    <span className="w-2 h-2 rounded-full bg-[#005c65]" /> Delta Dental
-                  </span>
-                  <span className="font-semibold text-slate-900">38%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 truncate">
-                    <span className="w-2 h-2 rounded-full bg-blue-600" /> MetLife PDP
-                  </span>
-                  <span className="font-semibold text-slate-900">24%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 truncate">
-                    <span className="w-2 h-2 rounded-full bg-teal-500" /> Cigna Dental
-                  </span>
-                  <span className="font-semibold text-slate-900">22%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 truncate">
-                    <span className="w-2 h-2 rounded-full bg-slate-300" /> Self-Pay / Copay
-                  </span>
-                  <span className="font-semibold text-slate-900">16%</span>
-                </div>
+              {/* Payer Legend List */}
+              <div className="flex flex-col gap-1.5 flex-1 min-w-0 text-xs">
+                {payerSegments.map((seg) => {
+                  const isHovered = hoveredPayer?.id === seg.id;
+                  return (
+                    <div 
+                      key={seg.id}
+                      onMouseEnter={() => setHoveredPayer(seg)}
+                      onMouseLeave={() => setHoveredPayer(null)}
+                      className={`flex items-center justify-between p-1 rounded-md transition-all cursor-pointer ${
+                        isHovered ? 'bg-slate-100/90 font-bold' : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5 truncate">
+                        <span 
+                          className="w-2 h-2 rounded-full shrink-0" 
+                          style={{ backgroundColor: seg.color }}
+                        /> 
+                        <span className="truncate">{seg.name}</span>
+                      </span>
+                      <span className="font-semibold text-slate-900 shrink-0 ml-1">{seg.pct}%</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
+
+            {/* Floating Tooltip Card for Payer Details */}
+            <AnimatePresence>
+              {hoveredPayer && (
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 5 }}
+                  className="mt-2 p-2.5 bg-slate-900 text-white rounded-lg text-xs space-y-1 shadow-lg"
+                >
+                  <div className="flex justify-between items-center font-bold text-teal-300">
+                    <span className="truncate">{hoveredPayer.name}</span>
+                    <span>${hoveredPayer.amount.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] text-slate-400">
+                    <span>{hoveredPayer.claims} Active Claims</span>
+                    <span>Avg Turnaround: <b>{hoveredPayer.avgDays} Days</b></span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          {/* Denial Root Causes */}
+          {/* Denial Root Causes with AI Remediate & Persistence */}
           <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-base font-bold text-slate-900">Denial Root Causes</h3>
+              <div className="flex items-center gap-1.5">
+                <ShieldAlert className="w-4 h-4 text-rose-500" />
+                <h3 className="text-base font-bold text-slate-900">Denial Root Causes</h3>
+              </div>
               <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 text-[10px] font-bold">
                 Action Required
               </span>
             </div>
-            <div className="flex flex-col gap-2 mt-1">
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-600">Missing Radiograph / Narrative</span>
-                  <span className="text-red-600 font-semibold">35%</span>
-                </div>
-                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-red-500 h-full rounded-full" style={{ width: '35%' }} />
-                </div>
-              </div>
 
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-600">Coding Discrepancy (CDT vs CPT)</span>
-                  <span className="text-blue-600 font-semibold">28%</span>
+            <div className="flex flex-col gap-2.5 mt-1">
+              {denialCauses.map((cause: any) => (
+                <div 
+                  key={cause.id}
+                  className="group relative p-1.5 rounded-lg transition-colors hover:bg-slate-50"
+                >
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-700 font-medium truncate max-w-[210px]">{cause.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900">{cause.percentage}%</span>
+                      <button
+                        onClick={() => handleRemediateDenial(cause.id, cause.name)}
+                        title="Auto-remediate with AI batch validation"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] bg-primary text-white px-1.5 py-0.5 rounded hover:bg-primary-container"
+                      >
+                        Auto-Fix
+                      </button>
+                    </div>
+                  </div>
+                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${cause.percentage}%` }}
+                      transition={{ duration: 0.6 }}
+                      className={`h-full rounded-full ${cause.color}`} 
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                    <span>{cause.claimsBlocked} Claims Blocked</span>
+                    <span>${cause.atRiskAmount.toLocaleString()} at risk</span>
+                  </div>
                 </div>
-                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-blue-600 h-full rounded-full" style={{ width: '28%' }} />
-                </div>
-              </div>
+              ))}
+            </div>
 
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-600">Max Benefit Frequency Exceeded</span>
-                  <span className="text-teal-600 font-semibold">22%</span>
-                </div>
-                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-[#005c65] h-full rounded-full" style={{ width: '22%' }} />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-600">Timely Filing Limit</span>
-                  <span className="text-slate-400 font-semibold">15%</span>
-                </div>
-                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-slate-300 h-full rounded-full" style={{ width: '15%' }} />
-                </div>
-              </div>
+            <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+              <span>AI Radiography validator active</span>
+              <button 
+                onClick={handleResetDenials}
+                className="text-[10px] text-slate-400 hover:text-slate-600 underline"
+              >
+                Reset Benchmarks
+              </button>
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FlaskConical,
@@ -17,6 +18,13 @@ import {
   QrCode,
   Share2,
   Radio,
+  Clock,
+  Sparkles,
+  RefreshCw,
+  Zap,
+  Check,
+  TrendingUp,
+  Sliders,
 } from 'lucide-react';
 import { mockLabOrders, mockDoctors } from '../data/mockData';
 import { LabOrder, LabPriority, LabStatus } from '../types';
@@ -29,11 +37,153 @@ interface LaboratoryProps {
   onOpenExport?: () => void;
 }
 
+export interface SpecimenIntakePoint {
+  time: string;
+  cx: number;
+  cyEmergency: number;
+  cyOutpatient: number;
+  emergencyCount: number;
+  outpatientCount: number;
+  tatMins: number;
+  fastTrackTarget: number;
+  callOuts: number;
+  shiftNote: string;
+  isPeak?: boolean;
+}
+
+export interface AnalyzerItem {
+  id: string;
+  name: string;
+  testType: string;
+  load: number;
+  testsPerHour: number;
+  cycle: string;
+  status: string;
+  statusColor: string;
+  barColor: string;
+  temp: string;
+  reagentLevel: number;
+  lastQC: string;
+}
+
+const DEFAULT_ANALYZERS: AnalyzerItem[] = [
+  { id: 'an-1', name: 'Sysmex XN-1000', testType: 'Hematology & CBC', load: 94, testsPerHour: 45, cycle: 'Continuous Micro-Flow', status: 'Online', statusColor: 'bg-teal-500', barColor: 'bg-[#005c65]', temp: '37.0°C', reagentLevel: 88, lastQC: '06:15 AM' },
+  { id: 'an-2', name: 'Cobas 8000', testType: 'Clinical Chemistry', load: 88, testsPerHour: 120, cycle: 'Batch High-Yield Photometry', status: 'Online', statusColor: 'bg-blue-600', barColor: 'bg-blue-600', temp: '36.8°C', reagentLevel: 92, lastQC: '07:00 AM' },
+  { id: 'an-3', name: 'GeneXpert Infinity', testType: 'Molecular PCR Assays', load: 62, testsPerHour: 24, cycle: 'Thermal Cycling (32/40m)', status: 'Active Cycle', statusColor: 'bg-teal-600', barColor: 'bg-teal-600', temp: '55.4°C', reagentLevel: 74, lastQC: '08:30 AM' },
+  { id: 'an-4', name: 'ORTHO VISION', testType: 'Blood Bank Serology', load: 100, testsPerHour: 36, cycle: 'Cross-Match Ready (42 units ready)', status: 'Online', statusColor: 'bg-teal-500', barColor: 'bg-teal-500', temp: '4.2°C', reagentLevel: 96, lastQC: '06:00 AM' },
+];
+
 export const Laboratory: React.FC<LaboratoryProps> = ({ onNotify, onOpenPowerBI, onOpenExport }) => {
+  const outletCtx = useOutletContext<{
+    showToast?: (type: 'success' | 'error' | 'info', title: string, desc?: string) => void;
+  } | null>();
+
   const [orders, setOrders] = useState<LabOrder[]>(mockLabOrders);
   const [selectedOrder, setSelectedOrder] = useState<LabOrder | null>(mockLabOrders[0]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'All' | 'STAT' | 'Pathology' | 'Critical'>('All');
+
+  // Power BI Specimen Flow Interactive State
+  const [shiftFilter, setShiftFilter] = useState<'Shift 1' | 'Shift 2' | 'Shift 3'>('Shift 1');
+  const [hoveredLabPoint, setHoveredLabPoint] = useState<SpecimenIntakePoint | null>(null);
+  const [hoveredAnalyzer, setHoveredAnalyzer] = useState<AnalyzerItem | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [calibratingId, setCalibratingId] = useState<string | null>(null);
+
+  // Analyzer Fleet State with LocalStorage Persistence
+  const STORAGE_KEY_ANALYZERS = 'smileclinic_lab_hardware_analyzers';
+  const [analyzers, setAnalyzers] = useState<AnalyzerItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_ANALYZERS);
+      return saved ? JSON.parse(saved) : DEFAULT_ANALYZERS;
+    } catch {
+      return DEFAULT_ANALYZERS;
+    }
+  });
+
+  const handleRunCalibration = (analyzerId: string, analyzerName: string) => {
+    setCalibratingId(analyzerId);
+    setTimeout(() => {
+      const updated = analyzers.map((a) => {
+        if (a.id === analyzerId) {
+          return {
+            ...a,
+            status: 'Online (Calibrated)',
+            load: Math.min(100, Math.max(70, a.load + 5)),
+            lastQC: 'Just now (Passed)',
+            reagentLevel: Math.max(50, a.reagentLevel - 2),
+          };
+        }
+        return a;
+      });
+      setAnalyzers(updated);
+      localStorage.setItem(STORAGE_KEY_ANALYZERS, JSON.stringify(updated));
+      setCalibratingId(null);
+      outletCtx?.showToast?.('success', 'Analyzer Optics QC Verified', `${analyzerName} internal diagnostic self-test complete. Optical density within ±0.02 delta.`);
+    }, 800);
+  };
+
+  const handleAutoSync = () => {
+    setIsSyncing(true);
+    setTimeout(() => {
+      const updated = analyzers.map((a) => ({
+        ...a,
+        status: 'Online',
+        lastQC: 'Auto-Synced (HL7)',
+      }));
+      setAnalyzers(updated);
+      localStorage.setItem(STORAGE_KEY_ANALYZERS, JSON.stringify(updated));
+      setIsSyncing(false);
+      outletCtx?.showToast?.('success', 'LIS Telemetry Bus Synced', 'Live assay telemetry refreshed from Central Pathology HL7 data exchange.');
+    }, 600);
+  };
+
+  const shiftDataPoints: Record<'Shift 1' | 'Shift 2' | 'Shift 3', SpecimenIntakePoint[]> = {
+    'Shift 1': [
+      { time: '06:00 AM', cx: 10, cyEmergency: 130, cyOutpatient: 145, emergencyCount: 18, outpatientCount: 12, tatMins: 12, fastTrackTarget: 14, callOuts: 0, shiftNote: 'Early morning surgery draw baseline' },
+      { time: '08:00 AM (Draw Peak)', cx: 150, cyEmergency: 80, cyOutpatient: 115, emergencyCount: 64, outpatientCount: 42, tatMins: 22, fastTrackTarget: 14, callOuts: 1, shiftNote: 'Surgical ICU batch intake surge', isPeak: true },
+      { time: '10:00 AM', cx: 300, cyEmergency: 40, cyOutpatient: 90, emergencyCount: 52, outpatientCount: 58, tatMins: 16, fastTrackTarget: 14, callOuts: 0, shiftNote: 'Routine ambulatory biopsy processing' },
+      { time: '12:00 PM (Shift Handover)', cx: 450, cyEmergency: 25, cyOutpatient: 75, emergencyCount: 78, outpatientCount: 46, tatMins: 38, fastTrackTarget: 14, callOuts: 2, shiftNote: 'Pre-handover sample rush & QC check', isPeak: true },
+      { time: '02:00 PM', cx: 580, cyEmergency: 45, cyOutpatient: 85, emergencyCount: 36, outpatientCount: 32, tatMins: 14, fastTrackTarget: 14, callOuts: 1, shiftNote: 'Shift 1 to Shift 2 custody handover' },
+    ],
+    'Shift 2': [
+      { time: '02:00 PM', cx: 10, cyEmergency: 110, cyOutpatient: 130, emergencyCount: 34, outpatientCount: 28, tatMins: 15, fastTrackTarget: 14, callOuts: 0, shiftNote: 'Afternoon rotation intake' },
+      { time: '04:00 PM (OR Batch)', cx: 150, cyEmergency: 55, cyOutpatient: 95, emergencyCount: 58, outpatientCount: 38, tatMins: 20, fastTrackTarget: 14, callOuts: 1, shiftNote: 'Post-op maxillofacial tissue receipts', isPeak: true },
+      { time: '06:00 PM', cx: 300, cyEmergency: 75, cyOutpatient: 110, emergencyCount: 42, outpatientCount: 24, tatMins: 14, fastTrackTarget: 14, callOuts: 0, shiftNote: 'Evening trauma standby' },
+      { time: '08:00 PM (Emergency Rush)', cx: 450, cyEmergency: 30, cyOutpatient: 120, emergencyCount: 72, outpatientCount: 16, tatMins: 28, fastTrackTarget: 14, callOuts: 2, shiftNote: 'Dental trauma & fracture intake', isPeak: true },
+      { time: '10:00 PM', cx: 580, cyEmergency: 90, cyOutpatient: 135, emergencyCount: 26, outpatientCount: 10, tatMins: 13, fastTrackTarget: 14, callOuts: 0, shiftNote: 'Night rotation handover' },
+    ],
+    'Shift 3': [
+      { time: '10:00 PM', cx: 10, cyEmergency: 120, cyOutpatient: 145, emergencyCount: 22, outpatientCount: 8, tatMins: 12, fastTrackTarget: 14, callOuts: 0, shiftNote: 'Night shift opening baseline' },
+      { time: '12:00 AM (Midnight STAT)', cx: 150, cyEmergency: 70, cyOutpatient: 140, emergencyCount: 48, outpatientCount: 6, tatMins: 18, fastTrackTarget: 14, callOuts: 1, shiftNote: 'ICU infection markers run', isPeak: true },
+      { time: '02:00 AM', cx: 300, cyEmergency: 100, cyOutpatient: 150, emergencyCount: 28, outpatientCount: 4, tatMins: 14, fastTrackTarget: 14, callOuts: 0, shiftNote: 'Maintenance auto-rinsing active' },
+      { time: '04:00 AM (Early Inpatient)', cx: 450, cyEmergency: 45, cyOutpatient: 135, emergencyCount: 62, outpatientCount: 14, tatMins: 24, fastTrackTarget: 14, callOuts: 1, shiftNote: 'Pre-surgery morning blood panels', isPeak: true },
+      { time: '06:00 AM', cx: 580, cyEmergency: 85, cyOutpatient: 140, emergencyCount: 30, outpatientCount: 12, tatMins: 13, fastTrackTarget: 14, callOuts: 0, shiftNote: 'Morning handover to Shift 1' },
+    ],
+  };
+
+  const shiftPaths = {
+    'Shift 1': {
+      emergencyArea: 'M0,130 Q60,115 120,80 T240,40 T360,65 T480,25 T600,45 L600,150 L0,150 Z',
+      emergencyLine: 'M0,130 Q60,115 120,80 T240,40 T360,65 T480,25 T600,45',
+      outpatientArea: 'M0,145 Q60,140 120,115 T240,90 T360,105 T480,75 T600,85 L600,150 L0,150 Z',
+      outpatientLine: 'M0,145 Q60,140 120,115 T240,90 T360,105 T480,75 T600,85',
+    },
+    'Shift 2': {
+      emergencyArea: 'M0,110 Q80,90 160,55 T320,75 T480,30 T600,90 L600,150 L0,150 Z',
+      emergencyLine: 'M0,110 Q80,90 160,55 T320,75 T480,30 T600,90',
+      outpatientArea: 'M0,130 Q80,120 160,95 T320,110 T480,120 T600,135 L600,150 L0,150 Z',
+      outpatientLine: 'M0,130 Q80,120 160,95 T320,110 T480,120 T600,135',
+    },
+    'Shift 3': {
+      emergencyArea: 'M0,120 Q80,100 160,70 T320,100 T480,45 T600,85 L600,150 L0,150 Z',
+      emergencyLine: 'M0,120 Q80,100 160,70 T320,100 T480,45 T600,85',
+      outpatientArea: 'M0,145 Q80,145 160,140 T320,150 T480,135 T600,140 L600,150 L0,150 Z',
+      outpatientLine: 'M0,145 Q80,145 160,140 T320,150 T480,135 T600,140',
+    },
+  };
+
+  const currentLabPoints = shiftDataPoints[shiftFilter];
 
   // Modals
   const [newSpecimenModalOpen, setNewSpecimenModalOpen] = useState(false);
@@ -299,11 +449,11 @@ export const Laboratory: React.FC<LaboratoryProps> = ({ onNotify, onOpenPowerBI,
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
         {/* Visualizer 1: Specimen Flow Hourly Volume Area Graph (7 Columns) */}
         <div className="xl:col-span-7 bg-white p-5 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-base font-bold text-slate-900">Specimen Intake &amp; Release Volume</span>
-                <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">
+                <span className="px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-semibold border border-teal-200">
                   Hourly Pulse
                 </span>
               </div>
@@ -311,34 +461,99 @@ export const Laboratory: React.FC<LaboratoryProps> = ({ onNotify, onOpenPowerBI,
                 Clinical sample flow distributed across Emergency, Inpatient ICUs, and Ambulatory units
               </span>
             </div>
-            <span className="text-xs font-semibold text-slate-500">Shift 1 (06:00 - 14:00)</span>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Shift Slicer Tabs */}
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                {(['Shift 1', 'Shift 2', 'Shift 3'] as const).map((sf) => (
+                  <button
+                    key={sf}
+                    onClick={() => {
+                      setShiftFilter(sf);
+                      setHoveredLabPoint(null);
+                    }}
+                    className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${
+                      shiftFilter === sf
+                        ? 'bg-white text-[#005c65] shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    {sf}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2 text-xs font-medium">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-[#007782]" />
+                  <span className="text-slate-600">ICU / ER</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-[#319796]" />
+                  <span className="text-slate-600">Outpatient</span>
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* SVG Area Chart */}
+          {/* SVG Area Chart with Power BI Floating Tooltip */}
           <div className="w-full h-48 relative flex items-end">
-            <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 600 160">
+            <svg 
+              className="w-full h-full overflow-visible" 
+              preserveAspectRatio="none" 
+              viewBox="0 0 600 160"
+              onMouseLeave={() => setHoveredLabPoint(null)}
+            >
               <defs>
                 <linearGradient id="labTealGrad" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#007782" stopOpacity="0.38" />
+                  <stop offset="0%" stopColor="#007782" stopOpacity="0.4" />
                   <stop offset="100%" stopColor="#007782" stopOpacity="0.0" />
                 </linearGradient>
                 <linearGradient id="labMintGrad" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#319796" stopOpacity="0.28" />
+                  <stop offset="0%" stopColor="#319796" stopOpacity="0.32" />
                   <stop offset="100%" stopColor="#319796" stopOpacity="0.0" />
                 </linearGradient>
+                <filter id="glowLab" x="-50%" y="-50%" width="200%" height="200%">
+                  <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#007782" floodOpacity="0.5" />
+                </filter>
               </defs>
+
               <line stroke="#ebeef0" strokeDasharray="3 3" strokeWidth="1" x1="0" x2="600" y1="30" y2="30" />
               <line stroke="#ebeef0" strokeDasharray="3 3" strokeWidth="1" x1="0" x2="600" y1="70" y2="70" />
               <line stroke="#ebeef0" strokeDasharray="3 3" strokeWidth="1" x1="0" x2="600" y1="110" y2="110" />
               <line stroke="#ebeef0" strokeWidth="1" x1="0" x2="600" y1="150" y2="150" />
 
+              {/* Hover Cursor Guideline */}
+              {hoveredLabPoint && (
+                <motion.line
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  x1={hoveredLabPoint.cx}
+                  y1="10"
+                  x2={hoveredLabPoint.cx}
+                  y2="150"
+                  stroke="#007782"
+                  strokeWidth="1.5"
+                  strokeDasharray="4 4"
+                  opacity="0.8"
+                />
+              )}
+
               {/* Area 1 (ICU/Emergency - Teal) */}
-              <path
-                d="M0,130 Q60,115 120,80 T240,40 T360,65 T480,25 T600,45 L600,150 L0,150 Z"
+              <motion.path
+                key={`lab-emerg-area-${shiftFilter}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                d={shiftPaths[shiftFilter].emergencyArea}
                 fill="url(#labTealGrad)"
               />
-              <path
-                d="M0,130 Q60,115 120,80 T240,40 T360,65 T480,25 T600,45"
+              <motion.path
+                key={`lab-emerg-line-${shiftFilter}`}
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                d={shiftPaths[shiftFilter].emergencyLine}
                 fill="none"
                 stroke="#007782"
                 strokeLinecap="round"
@@ -346,109 +561,261 @@ export const Laboratory: React.FC<LaboratoryProps> = ({ onNotify, onOpenPowerBI,
               />
 
               {/* Area 2 (Outpatient - Mint) */}
-              <path
-                d="M0,145 Q60,140 120,115 T240,90 T360,105 T480,75 T600,85 L600,150 L0,150 Z"
+              <motion.path
+                key={`lab-out-area-${shiftFilter}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                d={shiftPaths[shiftFilter].outpatientArea}
                 fill="url(#labMintGrad)"
               />
-              <path
-                d="M0,145 Q60,140 120,115 T240,90 T360,105 T480,75 T600,85"
+              <motion.path
+                key={`lab-out-line-${shiftFilter}`}
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                d={shiftPaths[shiftFilter].outpatientLine}
                 fill="none"
                 stroke="#319796"
                 strokeLinecap="round"
                 strokeWidth="2.5"
               />
 
-              {/* Points */}
-              <circle cx="240" cy="40" fill="#007782" r="4.5" stroke="#ffffff" strokeWidth="2" />
-              <circle cx="480" cy="25" fill="#ba1a1a" r="4.5" stroke="#ffffff" strokeWidth="2" />
+              {/* Interactive Specimen Nodes */}
+              {currentLabPoints.map((pt, idx) => {
+                const isHovered = hoveredLabPoint?.time === pt.time;
+                return (
+                  <g 
+                    key={idx}
+                    className="cursor-pointer"
+                    onMouseEnter={() => setHoveredLabPoint(pt)}
+                  >
+                    {/* Hover Hitbox */}
+                    <rect
+                      x={pt.cx - 20}
+                      y={0}
+                      width={40}
+                      height={160}
+                      fill="transparent"
+                    />
+
+                    {/* Emergency Circle */}
+                    <circle
+                      cx={pt.cx}
+                      cy={pt.cyEmergency}
+                      r={isHovered ? 7 : pt.isPeak ? 5.5 : 4.5}
+                      fill={isHovered ? '#007782' : pt.isPeak ? '#ba1a1a' : '#007782'}
+                      stroke="#ffffff"
+                      strokeWidth={isHovered ? 3 : 2}
+                      className="transition-all duration-200"
+                      filter={isHovered ? 'url(#glowLab)' : undefined}
+                    />
+
+                    {/* Outpatient Circle */}
+                    <circle
+                      cx={pt.cx}
+                      cy={pt.cyOutpatient}
+                      r={isHovered ? 5.5 : 4}
+                      fill="#319796"
+                      stroke="#ffffff"
+                      strokeWidth={2}
+                      className="transition-all duration-200"
+                    />
+
+                    {/* Concentric Pulsing Ring */}
+                    {isHovered && (
+                      <circle
+                        cx={pt.cx}
+                        cy={pt.cyEmergency}
+                        r={12}
+                        fill="none"
+                        stroke="#007782"
+                        strokeWidth="1.5"
+                        strokeOpacity="0.5"
+                        className="animate-ping"
+                      />
+                    )}
+                  </g>
+                );
+              })}
             </svg>
+
+            {/* Power BI Floating Data Preview Card */}
+            <AnimatePresence>
+              {hoveredLabPoint && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  style={{
+                    left: `${Math.min(Math.max((hoveredLabPoint.cx / 600) * 100, 15), 78)}%`,
+                    top: '5px'
+                  }}
+                  className="absolute -translate-x-1/2 z-20 pointer-events-none w-64 bg-slate-900/95 backdrop-blur-md text-white rounded-xl shadow-2xl border border-slate-700/80 p-3.5 text-xs"
+                >
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-200">
+                      <Clock className="w-3.5 h-3.5 text-teal-400" />
+                      <span>{hoveredLabPoint.time}</span>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      hoveredLabPoint.isPeak 
+                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
+                        : 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+                    }`}>
+                      {hoveredLabPoint.isPeak ? 'Surge Peak' : shiftFilter}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between bg-slate-800/60 p-1.5 rounded-lg">
+                      <span className="flex items-center gap-1.5 text-slate-300">
+                        <span className="w-2 h-2 rounded-full bg-[#007782]" />
+                        ICU &amp; Emergency:
+                      </span>
+                      <span className="font-bold text-white text-sm">
+                        {hoveredLabPoint.emergencyCount} <span className="text-[10px] text-teal-400 font-normal">specimens</span>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between bg-slate-800/60 p-1.5 rounded-lg">
+                      <span className="flex items-center gap-1.5 text-slate-300">
+                        <span className="w-2 h-2 rounded-full bg-[#319796]" />
+                        Ambulatory / Outpatient:
+                      </span>
+                      <span className="font-bold text-teal-300 text-sm">
+                        {hoveredLabPoint.outpatientCount} <span className="text-[10px] text-slate-400 font-normal">specimens</span>
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5 pt-1 text-[11px] text-slate-400">
+                      <div>
+                        <span>Emergency TAT:</span>
+                        <span className="block font-bold text-white">{hoveredLabPoint.tatMins} mins</span>
+                      </div>
+                      <div>
+                        <span>STAT Benchmark:</span>
+                        <span className="block font-bold text-emerald-400">Target &lt; {hoveredLabPoint.fastTrackTarget}m</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-1.5 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
+                      <span className="truncate">{hoveredLabPoint.shiftNote}</span>
+                      <span className="text-amber-400 font-semibold">{hoveredLabPoint.callOuts} Call-Outs</span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
+          {/* Interactive Time Steps */}
           <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-            <span>06:00 AM</span>
-            <span>08:00 AM (Draw Peak)</span>
-            <span>10:00 AM</span>
-            <span>12:00 PM (Shift Handover)</span>
-            <span>02:00 PM</span>
+            {currentLabPoints.map((pt, idx) => (
+              <button
+                key={idx}
+                onClick={() => setHoveredLabPoint(pt)}
+                className={`transition-colors hover:text-[#005c65] ${
+                  hoveredLabPoint?.time === pt.time 
+                    ? 'text-[#005c65] font-bold underline' 
+                    : pt.isPeak 
+                    ? 'text-slate-700 font-semibold' 
+                    : ''
+                }`}
+              >
+                {pt.time}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Visualizer 2: Workstation Analyzer Fleet Live Cluster (5 Columns) */}
-        <div className="xl:col-span-5 bg-white p-5 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between">
+        {/* Visualizer 2: Workstation Analyzer Fleet Live Cluster (5 Columns) with Calibration & Persistence */}
+        <div className="xl:col-span-5 bg-white p-5 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between relative">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <span className="text-base font-bold text-slate-900 block">Analyzer Hardware Grid</span>
+              <span className="text-base font-bold text-slate-900 block flex items-center gap-1.5">
+                <Cpu className="w-4 h-4 text-[#005c65]" />
+                Analyzer Hardware Grid
+              </span>
               <span className="text-xs text-slate-500">Live telemetry from connected assay lines</span>
             </div>
-            <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-800 text-xs font-bold">
-              Auto-Sync
-            </span>
+            <button
+              onClick={handleAutoSync}
+              disabled={isSyncing}
+              className="px-2.5 py-1 rounded bg-teal-50 text-teal-800 border border-teal-200 text-xs font-bold hover:bg-teal-100 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Syncing...' : 'Auto-Sync'}</span>
+            </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Machine 1: Hematology */}
-            <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 flex flex-col justify-between gap-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-500 uppercase font-semibold">Sysmex XN-1000</span>
-                <span className="w-2 h-2 rounded-full bg-teal-500" />
-              </div>
-              <span className="text-xs font-bold text-slate-900">Hematology &amp; CBC</span>
-              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-[#005c65] h-full rounded-full" style={{ width: '94%' }} />
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-500">
-                <span>Load: 94%</span>
-                <span className="text-teal-700 font-semibold">45 tests/hr</span>
-              </div>
-            </div>
+            {analyzers.map((machine) => {
+              const isHovered = hoveredAnalyzer?.id === machine.id;
+              const isCalibrating = calibratingId === machine.id;
+              return (
+                <div
+                  key={machine.id}
+                  onMouseEnter={() => setHoveredAnalyzer(machine)}
+                  onMouseLeave={() => setHoveredAnalyzer(null)}
+                  className={`p-3 rounded-lg border transition-all flex flex-col justify-between gap-1.5 relative ${
+                    isHovered ? 'bg-white shadow-md border-primary/40' : 'bg-slate-50/80 border-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-slate-500 uppercase font-semibold truncate max-w-[120px]">
+                      {machine.name}
+                    </span>
+                    <span className={`w-2 h-2 rounded-full ${machine.statusColor} animate-pulse`} />
+                  </div>
 
-            {/* Machine 2: Cobas 8000 */}
-            <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 flex flex-col justify-between gap-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-500 uppercase font-semibold">Cobas 8000</span>
-                <span className="w-2 h-2 rounded-full bg-blue-600" />
-              </div>
-              <span className="text-xs font-bold text-slate-900">Clinical Chemistry</span>
-              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-blue-600 h-full rounded-full" style={{ width: '88%' }} />
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-500">
-                <span>Load: 88%</span>
-                <span className="text-blue-700 font-semibold">120 tests/hr</span>
-              </div>
-            </div>
+                  <span className="text-xs font-bold text-slate-900 truncate">{machine.testType}</span>
 
-            {/* Machine 3: Molecular PCR */}
-            <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 flex flex-col justify-between gap-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-500 uppercase font-semibold">GeneXpert Infinity</span>
-                <span className="w-2 h-2 rounded-full bg-teal-600" />
-              </div>
-              <span className="text-xs font-bold text-slate-900">Molecular PCR Assays</span>
-              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-teal-600 h-full rounded-full" style={{ width: '62%' }} />
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-500">
-                <span>Cycle: 32/40m</span>
-                <span className="text-[#005c65] font-semibold">Thermal Cycling</span>
-              </div>
-            </div>
+                  <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${machine.load}%` }}
+                      transition={{ duration: 0.5 }}
+                      className={`${machine.barColor} h-full rounded-full`}
+                    />
+                  </div>
 
-            {/* Machine 4: Blood Bank */}
-            <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 flex flex-col justify-between gap-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-500 uppercase font-semibold">ORTHO VISION</span>
-                <span className="w-2 h-2 rounded-full bg-teal-500" />
-              </div>
-              <span className="text-xs font-bold text-slate-900">Blood Bank Serology</span>
-              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-teal-500 h-full rounded-full" style={{ width: '100%' }} />
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-500">
-                <span>Cross-Match Ready</span>
-                <span className="font-bold text-slate-800">42 units ready</span>
-              </div>
-            </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-500">
+                    <span>Load: <b>{machine.load}%</b></span>
+                    <span className="text-teal-700 font-semibold">{machine.testsPerHour} tests/hr</span>
+                  </div>
+
+                  {/* Machine Live Telemetry Preview Substrip */}
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-200/60">
+                    <span>Temp: {machine.temp}</span>
+                    <span>Reagent: {machine.reagentLevel}%</span>
+                  </div>
+
+                  {/* Calibration Action on Hover */}
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[9px] text-slate-400 truncate max-w-[80px]">QC: {machine.lastQC}</span>
+                    <button
+                      onClick={() => handleRunCalibration(machine.id, machine.name)}
+                      disabled={isCalibrating}
+                      className="text-[10px] font-semibold text-primary hover:text-primary-container flex items-center gap-1 disabled:opacity-50"
+                    >
+                      {isCalibrating ? (
+                        <>
+                          <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                          <span>Testing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-2.5 h-2.5" />
+                          <span>Calibrate</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
