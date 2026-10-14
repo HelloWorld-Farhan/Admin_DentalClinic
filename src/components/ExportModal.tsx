@@ -115,7 +115,7 @@ export default function ExportModal({ isOpen, onClose, reportTitle = 'Executive 
     <AnimatePresence>
       {isOpen && (
         <ModalPortal>
-          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-[99999] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-6 pb-6 sm:pb-6">
             {/* Animated Backdrop with Click-Outside to Close */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -128,15 +128,15 @@ export default function ExportModal({ isOpen, onClose, reportTitle = 'Executive 
 
           {/* Animated Modal Card */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            initial={{ opacity: 0, scale: 0.94, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            exit={{ opacity: 0, scale: 0.94, y: 16 }}
+            transition={{ type: 'spring', damping: 26, stiffness: 320 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative z-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
+            className="relative z-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden max-h-[calc(100dvh-1.5rem)] sm:max-h-[88vh] flex flex-col my-auto"
           >
           {/* Header */}
-          <div className="p-5 bg-gradient-to-r from-primary to-primary-container text-white flex items-center justify-between">
+          <div className="p-4 sm:p-5 bg-gradient-to-r from-primary to-primary-container text-white flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
                 <Download className="w-5 h-5 text-white" />
@@ -156,7 +156,7 @@ export default function ExportModal({ isOpen, onClose, reportTitle = 'Executive 
           </div>
 
           {/* Formats Grid */}
-          <div className="p-6 space-y-5">
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block">
                 Select Export Package Format
@@ -251,7 +251,7 @@ export default function ExportModal({ isOpen, onClose, reportTitle = 'Executive 
           </div>
 
           {/* Footer */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2.5">
+          <div className="p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2.5 shrink-0">
             <button
               onClick={onClose}
               disabled={isExporting}

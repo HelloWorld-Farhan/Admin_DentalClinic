@@ -60,7 +60,7 @@ export default function PowerBIModal({ isOpen, onClose }: PowerBIModalProps) {
     <AnimatePresence>
       {isOpen && (
         <ModalPortal>
-          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="fixed inset-0 z-[99999] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-6 pb-6 sm:pb-6">
           {/* Animated Backdrop with Click-Outside to Close */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -73,41 +73,51 @@ export default function PowerBIModal({ isOpen, onClose }: PowerBIModalProps) {
 
           {/* Animated Modal Card */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            initial={{ opacity: 0, scale: 0.94, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            exit={{ opacity: 0, scale: 0.94, y: 16 }}
+            transition={{ type: 'spring', damping: 26, stiffness: 320 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative z-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden max-h-[92vh] flex flex-col"
+            className="relative z-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl max-w-4xl w-full overflow-hidden max-h-[calc(100dvh-1.5rem)] sm:max-h-[88vh] flex flex-col my-auto"
           >
           {/* Header */}
-          <div className="p-4 sm:p-6 bg-gradient-to-r from-slate-900 via-primary-container to-slate-900 text-white flex items-center justify-between border-b border-primary/30 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center border border-amber-400/30">
-                <BarChart3 className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-base sm:text-lg">Power BI Executive Clinical Intelligence</h3>
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    DirectQuery Live
-                  </span>
+          <div className="relative p-4 sm:p-5 bg-gradient-to-r from-slate-950 via-primary-container to-slate-900 text-white shrink-0 border-b border-primary/30">
+            <div className="flex items-center justify-between gap-3 pr-18 sm:pr-22">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center border border-amber-400/30 shrink-0">
+                  <BarChart3 className="w-5 h-5" />
                 </div>
-                <p className="text-xs text-slate-300 mt-0.5">Azure Synapse Healthcare Fabric • HL7 FHIR Model R4</p>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <h3 className="font-bold text-sm sm:text-base text-white truncate max-w-[190px] xs:max-w-[260px] sm:max-w-none">
+                      Power BI Clinical Intelligence
+                    </h3>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full whitespace-nowrap">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Live
+                    </span>
+                  </div>
+                  <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5 truncate">
+                    Azure Synapse Healthcare Fabric • HL7 FHIR Model R4
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+
+            {/* Corner action controls */}
+            <div className="absolute top-3.5 right-3.5 sm:top-4 sm:right-5 flex items-center gap-1.5">
               <button
                 onClick={handleRefresh}
-                className="p-2 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                className="p-2 text-slate-300 hover:text-white rounded-xl bg-white/10 hover:bg-white/20 transition-all active:scale-95"
                 title="Refresh DirectQuery stream"
+                aria-label="Refresh telemetry"
               >
                 <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-amber-300' : ''}`} />
               </button>
               <button
                 onClick={onClose}
-                className="p-2 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                className="p-2 text-slate-300 hover:text-white rounded-xl bg-white/10 hover:bg-white/20 transition-all active:scale-95"
+                aria-label="Close dialog"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -115,29 +125,29 @@ export default function PowerBIModal({ isOpen, onClose }: PowerBIModalProps) {
           </div>
 
           {/* Subheader controls */}
-          <div className="px-4 sm:px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
-            <div className="flex items-center gap-1.5 bg-slate-200/70 dark:bg-slate-700/60 p-1 rounded-xl text-xs font-semibold">
+          <div className="px-3 sm:px-6 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-1.5 bg-slate-200/70 dark:bg-slate-700/60 p-1 rounded-xl text-xs font-semibold overflow-x-auto no-scrollbar max-w-full">
               {(['24h', '7d', '30d', 'ytd'] as const).map((range) => (
                 <button
                   key={range}
                   onClick={() => setSelectedRange(range)}
-                  className={`px-3 py-1 rounded-lg transition-all ${
+                  className={`px-2.5 sm:px-3 py-1 rounded-lg transition-all shrink-0 active:scale-95 ${
                     selectedRange === range
                       ? 'bg-white dark:bg-slate-900 text-primary font-bold shadow-sm'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                   }`}
                 >
-                  {range === '24h' ? "Today's Telemetry" : range === '7d' ? '7-Day Trend' : range === '30d' ? '30-Day Cycle' : 'Year-to-Date'}
+                  {range === '24h' ? "Today" : range === '7d' ? '7-Day Trend' : range === '30d' ? '30-Day Cycle' : 'Year-to-Date'}
                 </button>
               ))}
             </div>
 
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-slate-500 flex items-center gap-1">
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-slate-500 hidden sm:flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                 AI Anomaly Detector:
               </span>
-              <span className="font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+              <span className="font-semibold text-[11px] sm:text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 whitespace-nowrap">
                 Optimal Operatory Yield
               </span>
             </div>

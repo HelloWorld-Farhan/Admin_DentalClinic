@@ -897,7 +897,7 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
       <AnimatePresence>
         {admissionModalOpen && (
           <ModalPortal>
-            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+            <div className="fixed inset-0 z-[99999] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-6 pb-6 sm:pb-6">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -907,12 +907,12 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
                 className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
               />
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              initial={{ scale: 0.94, opacity: 0, y: 16 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              exit={{ scale: 0.94, opacity: 0, y: 16 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 320 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative z-10 bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6"
+              className="relative z-10 bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 w-full max-w-2xl max-h-[calc(100dvh-1.5rem)] sm:max-h-[88vh] overflow-y-auto p-4 sm:p-6 my-auto"
             >
               <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                 <div className="flex items-center gap-2">
@@ -1092,7 +1092,7 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
       <AnimatePresence>
         {transferModalOpen && (
           <ModalPortal>
-            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+            <div className="fixed inset-0 z-[99999] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-6 pb-6 sm:pb-6">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -1102,12 +1102,12 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
                 className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
               />
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              initial={{ scale: 0.94, opacity: 0, y: 16 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              exit={{ scale: 0.94, opacity: 0, y: 16 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 320 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative z-10 bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-lg p-6 overflow-hidden"
+              className="relative z-10 bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 w-full max-w-lg p-4 sm:p-6 overflow-hidden max-h-[calc(100dvh-1.5rem)] sm:max-h-[88vh] flex flex-col my-auto"
             >
               <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                 <div className="flex items-center gap-2">
@@ -1201,7 +1201,7 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
       <AnimatePresence>
         {dischargeModalOpen && (
           <ModalPortal>
-            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+            <div className="fixed inset-0 z-[99999] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-6 pb-6 sm:pb-6">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -1211,12 +1211,12 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
                 className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
               />
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              initial={{ scale: 0.94, opacity: 0, y: 16 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              exit={{ scale: 0.94, opacity: 0, y: 16 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 320 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative z-10 bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-lg p-6 overflow-hidden"
+              className="relative z-10 bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 w-full max-w-lg p-4 sm:p-6 overflow-hidden max-h-[calc(100dvh-1.5rem)] sm:max-h-[88vh] flex flex-col my-auto"
             >
               <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                 <div className="flex items-center gap-2">
@@ -1306,7 +1306,7 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
       <AnimatePresence>
         {vitalsModalOpen && selectedPatient && (
           <ModalPortal>
-            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+            <div className="fixed inset-0 z-[99999] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-6 pb-6 sm:pb-6">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -1316,12 +1316,12 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
                 className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
               />
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              initial={{ scale: 0.94, opacity: 0, y: 16 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              exit={{ scale: 0.94, opacity: 0, y: 16 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 320 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative z-10 bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-xl p-6 overflow-hidden"
+              className="relative z-10 bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 w-full max-w-xl p-4 sm:p-6 overflow-hidden max-h-[calc(100dvh-1.5rem)] sm:max-h-[88vh] flex flex-col my-auto"
             >
               <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                 <div className="flex items-center gap-2">
@@ -1402,7 +1402,7 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
       <AnimatePresence>
         {rxModalOpen && selectedPatient && (
           <ModalPortal>
-            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+            <div className="fixed inset-0 z-[99999] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-6 pb-6 sm:pb-6">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -1412,12 +1412,12 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
                 className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
               />
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              initial={{ scale: 0.94, opacity: 0, y: 16 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              exit={{ scale: 0.94, opacity: 0, y: 16 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 320 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative z-10 bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-lg p-6 overflow-hidden"
+              className="relative z-10 bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 w-full max-w-lg p-4 sm:p-6 overflow-hidden max-h-[calc(100dvh-1.5rem)] sm:max-h-[88vh] flex flex-col my-auto"
             >
               <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                 <div className="flex items-center gap-2">

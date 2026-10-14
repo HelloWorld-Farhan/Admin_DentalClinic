@@ -274,7 +274,7 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
       <AnimatePresence>
         {broadcastModalOpen && (
           <ModalPortal>
-            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+            <div className="fixed inset-0 z-[99999] overflow-y-auto overscroll-contain flex min-h-full items-center justify-center p-3 sm:p-6 pb-6 sm:pb-6">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -283,14 +283,14 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
                 className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm"
               />
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                initial={{ opacity: 0, scale: 0.94, y: 16 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                exit={{ opacity: 0, scale: 0.94, y: 16 }}
+                transition={{ type: 'spring', damping: 26, stiffness: 320 }}
                 onClick={(e) => e.stopPropagation()}
-                className="relative z-10 bg-white dark:bg-slate-900 border border-red-500/30 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
+                className="relative z-10 bg-white dark:bg-slate-900 border border-red-500/30 rounded-2xl sm:rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden max-h-[calc(100dvh-1.5rem)] sm:max-h-[88vh] flex flex-col my-auto"
               >
-                <div className="p-4 sm:p-5 bg-gradient-to-r from-red-600 to-rose-700 text-white flex items-center justify-between">
+                <div className="p-4 sm:p-5 bg-gradient-to-r from-red-600 to-rose-700 text-white flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
                       <AlertTriangle className="w-5 h-5 text-white" />
@@ -385,13 +385,21 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
 
-            <NavLink to="/dashboard" className="flex items-center group shrink-0" title="Smile Clinic Home">
+            <NavLink to="/dashboard" className="flex items-center gap-2.5 group shrink-0" title="Smile Clinic Home">
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary to-[#004e57] text-white flex items-center justify-center shadow-md shadow-primary/20 group-hover:scale-105 transition-all duration-200 shrink-0 border border-white/20">
                 {/* Healthcare Cross & Shield Emblem */}
                 <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 2L4 6v6c0 5.5 3.8 10.7 8 12 4.2-1.3 8-6.5 8-12V6l-8-4z" fill="rgba(255,255,255,0.18)"/>
                   <path d="M12 7v8M8 11h8" stroke="white" strokeWidth="2.5"/>
                 </svg>
+              </div>
+              <div className="flex flex-col">
+                <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 leading-tight">
+                  Smile Clinic
+                </span>
+                <span className="text-[9px] sm:text-[10px] font-bold text-primary tracking-wider uppercase">
+                  Admin Portal
+                </span>
               </div>
             </NavLink>
           </div>
