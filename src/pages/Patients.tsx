@@ -279,7 +279,7 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
             className="h-10 px-5 rounded-lg bg-[#005c65] hover:bg-[#007782] text-white text-sm font-semibold transition-all flex items-center gap-2 shadow-md shadow-[#005c65]/20"
           >
             <UserPlus className="w-4 h-4" />
-            <span>+ New Patient Admission</span>
+            <span>New Patient Admission</span>
           </button>
         </div>
       </div>

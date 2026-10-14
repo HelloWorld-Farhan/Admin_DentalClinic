@@ -180,7 +180,7 @@ export const Laboratory: React.FC<LaboratoryProps> = ({ onNotify, onOpenPowerBI,
             className="flex items-center gap-2 px-4 h-10 rounded-lg bg-[#005c65] hover:bg-[#007782] text-white text-sm font-semibold shadow-md shadow-[#005c65]/20 transition-all"
           >
             <QrCode className="w-4 h-4" />
-            <span>+ Log New Specimen / Barcode</span>
+            <span>Log New Specimen / Barcode</span>
           </button>
         </div>
       </div>

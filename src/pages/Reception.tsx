@@ -265,7 +265,7 @@ export const Reception: React.FC<ReceptionProps> = ({ onNotify, onOpenPowerBI, o
             className="flex items-center gap-2 px-4 h-10 rounded-lg bg-[#005c65] hover:bg-[#007782] text-white text-sm font-semibold shadow-md shadow-[#005c65]/20 transition-all"
           >
             <Plus className="w-4 h-4" />
-            <span>+ New Check-In</span>
+            <span>New Check-In</span>
           </button>
         </div>
       </div>

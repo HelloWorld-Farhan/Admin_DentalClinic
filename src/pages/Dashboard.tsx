@@ -25,11 +25,10 @@ import {
   X
 } from 'lucide-react';
 import { 
-  mockDoctors, 
-  mockORSuites, 
   mockTriageQueue, 
   mockDepartmentMetrics 
 } from '../data/mockData';
+import { useClinicDB } from '../lib/db';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { ModalPortal } from '../components/ModalPortal';
 
@@ -46,11 +45,22 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
 
   const navigate = useNavigate();
 
+  // Real-time Central Database
+  const { doctors, orSuites } = useClinicDB();
+
   // Active filter tab
   const [timeFilter, setTimeFilter] = useState<'24h' | '7d' | '30d'>('24h');
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [selectedSuiteDetail, setSelectedSuiteDetail] = useState<any>(null);
+
+  // Dynamic calculations from real-time DB
+  const onDutyDoctors = doctors.filter((d) => d.status === 'On Duty' || d.status === 'In Surgery' || d.status === 'On Rounds');
+  const inSurgeryDoctors = doctors.filter((d) => d.status === 'In Surgery');
+  const onRoundsDoctors = doctors.filter((d) => d.status === 'On Rounds' || d.status === 'On Duty');
+  const specialistsCount = doctors.filter((d) => !d.title?.toLowerCase().includes('resident')).length;
+  const residentsCount = doctors.filter((d) => d.title?.toLowerCase().includes('resident')).length;
+  const onShiftPct = doctors.length > 0 ? Math.round((onDutyDoctors.length / doctors.length) * 100) : 0;
 
   // Freeze background window and prevent interaction when popup is open
   useBodyScrollLock(Boolean(broadcastModalOpen || selectedSuiteDetail));
@@ -162,14 +172,14 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
           </div>
           <div className="mt-3">
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-slate-900 dark:text-white">42 <span className="text-sm font-normal text-slate-400">/ 56</span></span>
-              <span className="text-xs font-semibold text-sky-600">75% On-Shift</span>
+              <span className="text-2xl font-bold text-slate-900 dark:text-white">{onDutyDoctors.length} <span className="text-sm font-normal text-slate-400">/ {doctors.length}</span></span>
+              <span className="text-xs font-semibold text-sky-600">{onShiftPct}% On-Shift</span>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">8 In Surgery • 34 On Rounds &amp; Chairs</p>
+            <p className="text-[11px] text-slate-500 mt-1">{inSurgeryDoctors.length} In Surgery • {onRoundsDoctors.length} On Rounds &amp; Chairs</p>
           </div>
           <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between text-[11px] text-slate-600">
-            <span>Specialists: <b>28</b></span>
-            <span>Residents: <b>14</b></span>
+            <span>Specialists: <b>{specialistsCount}</b></span>
+            <span>Residents: <b>{residentsCount}</b></span>
           </div>
         </motion.div>
 
@@ -435,7 +445,7 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
           </div>
 
           <div className="divide-y divide-slate-100 dark:divide-slate-800 pt-2">
-            {mockORSuites.map((suite) => (
+            {orSuites.map((suite) => (
               <div 
                 key={suite.id}
                 onClick={() => setSelectedSuiteDetail(suite)}

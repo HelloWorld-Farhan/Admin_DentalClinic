@@ -17,7 +17,7 @@ import {
   Camera,
   User
 } from 'lucide-react';
-import { mockDoctors, mockORSuites } from '../data/mockData';
+import { useClinicDB } from '../lib/db';
 import { Doctor } from '../types';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { ModalPortal } from '../components/ModalPortal';
@@ -31,7 +31,8 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
     showToast: (type: 'success' | 'error' | 'info', title: string, desc?: string) => void;
   }>();
 
-  const [doctorsList, setDoctorsList] = useState<Doctor[]>(mockDoctors);
+  // Central Database with real-time reactive sync & persistent storage
+  const { doctors: doctorsList, orSuites, addDoctor, bookORSuite } = useClinicDB();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'On Duty' | 'In Surgery' | 'On Rounds' | 'Off Duty'>('All');
   const [specialtyFilter, setSpecialtyFilter] = useState('All Specialties');
@@ -40,6 +41,15 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
   // Modals
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [newDoctorModalOpen, setNewDoctorModalOpen] = useState(false);
+
+  // Book OR Suite form state
+  const [scheduleForm, setScheduleForm] = useState({
+    suiteId: 'OR-1',
+    surgeon: '',
+    procedure: '',
+    startTime: '13:00',
+    durationHours: 2,
+  });
 
   // Auto-open modal if launched from Quick Actions Hub (?add=true)
   useEffect(() => {
@@ -124,9 +134,12 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
 
   const handleCreateDoctor = (e: React.FormEvent) => {
     e.preventDefault();
-    const newDoc: Doctor = {
-      id: `doc-${Date.now()}`,
-      name: newDoctorForm.name,
+    if (!newDoctorForm.name.trim()) {
+      showToast('error', 'Name Required', 'Please input physician legal name');
+      return;
+    }
+    const newDoc = addDoctor({
+      name: newDoctorForm.name.trim(),
       title: 'Attending Clinical Practitioner',
       specialty: newDoctorForm.specialty,
       npi: newDoctorForm.npi || `NPI-${Math.floor(100000000 + Math.random() * 900000000)}`,
@@ -140,17 +153,39 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
       email: newDoctorForm.email || 'practitioner@smileclinic.com',
       avatar: newDoctorForm.photoPreview || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
       experience: 'Board Eligible Practitioner',
-    };
-    setDoctorsList([newDoc, ...doctorsList]);
+    });
     setNewDoctorModalOpen(false);
     resetDoctorForm();
-    showToast('success', 'Doctor Added', `${newDoc.name} has been added to the roster`);
+    showToast('success', 'Doctor Added & Saved', `${newDoc.name} registered and saved to database.`);
   };
 
   const handleScheduleSurgery = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!scheduleForm.procedure.trim()) {
+      showToast('error', 'Procedure Required', 'Please enter surgical procedure description.');
+      return;
+    }
+    const surgeonName = scheduleForm.surgeon || (doctorsList[0]?.name ?? 'Dr. Marcus Vance');
+    const booked = bookORSuite({
+      suiteId: scheduleForm.suiteId,
+      surgeon: surgeonName,
+      procedure: scheduleForm.procedure.trim(),
+      startTime: scheduleForm.startTime,
+      durationHours: scheduleForm.durationHours,
+    });
     setScheduleModalOpen(false);
-    showToast('success', 'Surgery Scheduled', 'Case assigned to Main Pavilion OR Suite with automated room turnaround');
+    setScheduleForm({
+      suiteId: 'OR-1',
+      surgeon: '',
+      procedure: '',
+      startTime: '13:00',
+      durationHours: 2,
+    });
+    showToast(
+      'success',
+      'Surgery Scheduled & Live',
+      `${booked?.suiteNumber || scheduleForm.suiteId} booked for ${surgeonName} with real-time room turnaround.`
+    );
   };
 
   return (
@@ -163,7 +198,7 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
               Doctors Directory &amp; OR Suite Scheduling
             </h1>
             <span className="text-[11px] font-semibold bg-secondary/10 text-secondary border border-secondary/20 px-2.5 py-0.5 rounded-full">
-              42 Physicians On-Duty
+              {doctorsList.filter((d) => d.status === 'On Duty' || d.status === 'In Surgery').length} Physicians On-Duty
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
@@ -202,19 +237,19 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
           </div>
           <div className="flex items-center gap-3 text-xs font-semibold">
             <span className="flex items-center gap-1 text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> In Surgery (4)
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> In Surgery ({orSuites.filter((s) => s.status === 'In Surgery').length})
             </span>
             <span className="flex items-center gap-1 text-sky-700 bg-sky-50 px-2 py-0.5 rounded">
-              Turnover (1)
+              Turnover ({orSuites.filter((s) => s.status === 'Turnover Cleaning').length})
             </span>
             <span className="flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-              Ready / Standby (1)
+              Ready / Standby ({orSuites.filter((s) => s.status === 'Standby' || s.status === 'Pre-Op Prep').length})
             </span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-          {mockORSuites.map((suite) => (
+          {orSuites.map((suite) => (
             <div
               key={suite.id}
               className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 flex flex-col justify-between space-y-3"
@@ -811,21 +846,32 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
               <form onSubmit={handleScheduleSurgery} className="p-5 space-y-3.5 text-xs">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Target Operating Room</label>
-                  <select className="w-full p-2.5 rounded-xl border border-slate-200 text-xs">
-                    <option>OR-1: Main Pavilion Surgical Suite</option>
-                    <option>OR-2: Craniofacial Surgical Bay</option>
-                    <option>OR-3: Micro-Surgical Operatory</option>
-                    <option>OR-4: Pediatric Rehabilitation Suite</option>
-                    <option>OR-5: Periodontal &amp; Bone Bay</option>
-                    <option>OR-6: Emergency Trauma Bay (Standby)</option>
+                  <select
+                    value={scheduleForm.suiteId}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, suiteId: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-primary focus:outline-none"
+                  >
+                    {orSuites.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.suiteNumber}: {s.suiteName} ({s.status})
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Lead Surgeon</label>
-                  <select className="w-full p-2.5 rounded-xl border border-slate-200 text-xs">
-                    {mockDoctors.map(d => (
-                      <option key={d.id}>{d.name} ({d.specialty})</option>
+                  <select
+                    value={scheduleForm.surgeon}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, surgeon: e.target.value })}
+                    required
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-primary focus:outline-none"
+                  >
+                    <option value="">Select Lead Surgeon...</option>
+                    {doctorsList.map((d) => (
+                      <option key={d.id} value={d.name}>
+                        {d.name} ({d.specialty}) — {d.status}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -835,23 +881,36 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
                   <input
                     type="text"
                     required
+                    value={scheduleForm.procedure}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, procedure: e.target.value })}
                     placeholder="E.g., Bilateral Sinus Lift with Autogenous Bone Graft"
-                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-primary focus:outline-none"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Start Time</label>
-                    <input type="time" defaultValue="13:00" className="w-full p-2.5 rounded-xl border border-slate-200 text-xs" />
+                    <input
+                      type="time"
+                      value={scheduleForm.startTime}
+                      onChange={(e) => setScheduleForm({ ...scheduleForm, startTime: e.target.value })}
+                      required
+                      className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-primary focus:outline-none"
+                    />
                   </div>
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Est. Duration</label>
-                    <select className="w-full p-2.5 rounded-xl border border-slate-200 text-xs">
-                      <option>1 Hour</option>
-                      <option>2 Hours</option>
-                      <option>3 Hours</option>
-                      <option>4+ Hours</option>
+                    <select
+                      value={scheduleForm.durationHours}
+                      onChange={(e) => setScheduleForm({ ...scheduleForm, durationHours: Number(e.target.value) })}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-primary focus:outline-none"
+                    >
+                      <option value={1}>1 Hour</option>
+                      <option value={2}>2 Hours</option>
+                      <option value={3}>3 Hours</option>
+                      <option value={4}>4 Hours</option>
+                      <option value={5}>5+ Hours</option>
                     </select>
                   </div>
                 </div>
