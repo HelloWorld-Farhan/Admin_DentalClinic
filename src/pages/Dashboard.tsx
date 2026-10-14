@@ -391,85 +391,301 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
               <p className="text-xs text-slate-500 mt-0.5">Continuous hourly patient intake tracking across all 6 treatment suites</p>
             </div>
 
-            <div className="flex items-center gap-4 text-xs font-semibold">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-primary"></span>
-                <span>Inflow (Visits)</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-secondary"></span>
-                <span>Turnover Discharges</span>
-              </span>
+            <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
+              {/* Timeframe Slicer */}
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700">
+                {(['24h', '7d', '30d'] as const).map((tf) => (
+                  <button
+                    key={tf}
+                    onClick={() => {
+                      setTimeFilter(tf);
+                      setHoveredChartPoint(null);
+                    }}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
+                      timeFilter === tf
+                        ? 'bg-white dark:bg-slate-700 text-primary dark:text-teal-400 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    {tf.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#005c65]"></span>
+                  <span className="text-slate-700 dark:text-slate-300">Inflow (Visits)</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#1560a4]"></span>
+                  <span className="text-slate-700 dark:text-slate-300">Turnover Discharges</span>
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Graphical SVG Chart */}
-          <div className="py-6">
-            <div className="h-56 sm:h-64 w-full">
-              <svg className="w-full h-full overflow-visible" viewBox="0 0 800 240">
+          {/* Graphical SVG Chart with Power BI Hover Data Preview */}
+          <div className="py-4 relative">
+            <div className="h-60 sm:h-64 w-full relative">
+              <svg 
+                className="w-full h-full overflow-visible" 
+                viewBox="0 0 800 240"
+                onMouseMove={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const mouseX = ((e.clientX - rect.left) / rect.width) * 800;
+                  // Find nearest point
+                  let closest = currentChartPoints[0];
+                  let minDistance = Infinity;
+                  for (const pt of currentChartPoints) {
+                    const dist = Math.abs(pt.cx - mouseX);
+                    if (dist < minDistance) {
+                      minDistance = dist;
+                      closest = pt;
+                    }
+                  }
+                  if (minDistance < 90) {
+                    setHoveredChartPoint(closest);
+                  }
+                }}
+                onMouseLeave={() => setHoveredChartPoint(null)}
+              >
                 <defs>
                   <linearGradient id="gradInflow" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#005c65" stopOpacity="0.35" />
+                    <stop offset="0%" stopColor="#005c65" stopOpacity="0.4" />
                     <stop offset="100%" stopColor="#005c65" stopOpacity="0.0" />
                   </linearGradient>
                   <linearGradient id="gradDischarge" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#1560a4" stopOpacity="0.3" />
+                    <stop offset="0%" stopColor="#1560a4" stopOpacity="0.32" />
                     <stop offset="100%" stopColor="#1560a4" stopOpacity="0.0" />
                   </linearGradient>
+                  <filter id="glowCircle" x="-50%" y="-50%" width="200%" height="200%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#005c65" floodOpacity="0.5" />
+                  </filter>
                 </defs>
 
                 {/* Horizontal Grid lines */}
-                <line x1="0" y1="40" x2="800" y2="40" stroke="#f1f4f6" strokeWidth="1" />
-                <line x1="0" y1="90" x2="800" y2="90" stroke="#f1f4f6" strokeWidth="1" />
-                <line x1="0" y1="140" x2="800" y2="140" stroke="#f1f4f6" strokeWidth="1" />
+                <line x1="0" y1="40" x2="800" y2="40" stroke="#f1f4f6" strokeWidth="1" strokeDasharray="3 3" />
+                <line x1="0" y1="90" x2="800" y2="90" stroke="#f1f4f6" strokeWidth="1" strokeDasharray="3 3" />
+                <line x1="0" y1="140" x2="800" y2="140" stroke="#f1f4f6" strokeWidth="1" strokeDasharray="3 3" />
                 <line x1="0" y1="190" x2="800" y2="190" stroke="#f1f4f6" strokeWidth="1" />
 
-                {/* Area 1: Inflow */}
-                <path
-                  d="M0,200 Q100,160 200,130 T400,60 T600,110 T800,45 L800,240 L0,240 Z"
+                {/* Vertical Cursor Guide when hovering */}
+                {hoveredChartPoint && (
+                  <motion.line
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    x1={hoveredChartPoint.cx}
+                    y1="20"
+                    x2={hoveredChartPoint.cx}
+                    y2="220"
+                    stroke="#005c65"
+                    strokeWidth="1.5"
+                    strokeDasharray="4 4"
+                    opacity="0.8"
+                  />
+                )}
+
+                {/* Area 1: Inflow Path */}
+                <motion.path
+                  key={`inflow-area-${timeFilter}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                  d={chartPaths[timeFilter].inflowArea}
                   fill="url(#gradInflow)"
                 />
-                <path
-                  d="M0,200 Q100,160 200,130 T400,60 T600,110 T800,45"
+                <motion.path
+                  key={`inflow-line-${timeFilter}`}
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  d={chartPaths[timeFilter].inflowLine}
                   fill="none"
                   stroke="#005c65"
-                  strokeWidth="3"
+                  strokeWidth="3.5"
                   strokeLinecap="round"
                 />
 
-                {/* Area 2: Discharge */}
-                <path
-                  d="M0,220 Q120,200 220,160 T420,110 T620,130 T800,80 L800,240 L0,240 Z"
+                {/* Area 2: Discharge Path */}
+                <motion.path
+                  key={`discharge-area-${timeFilter}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                  d={chartPaths[timeFilter].dischargeArea}
                   fill="url(#gradDischarge)"
                 />
-                <path
-                  d="M0,220 Q120,200 220,160 T420,110 T620,130 T800,80"
+                <motion.path
+                  key={`discharge-line-${timeFilter}`}
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  d={chartPaths[timeFilter].dischargeLine}
                   fill="none"
                   stroke="#1560a4"
                   strokeWidth="2.5"
                   strokeLinecap="round"
-                  strokeDasharray="4 2"
+                  strokeDasharray="5 3"
                 />
 
-                {/* Interactive Points */}
-                <circle cx="400" cy="60" r="5" fill="#005c65" stroke="#ffffff" strokeWidth="2" />
-                <circle cx="800" cy="45" r="5" fill="#005c65" stroke="#ffffff" strokeWidth="2" />
+                {/* Interactive Data Nodes */}
+                {currentChartPoints.map((pt, idx) => {
+                  const isHovered = hoveredChartPoint?.time === pt.time;
+                  return (
+                    <g 
+                      key={idx}
+                      className="cursor-pointer"
+                      onMouseEnter={() => setHoveredChartPoint(pt)}
+                    >
+                      {/* Invisible hover hitbox */}
+                      <rect
+                        x={pt.cx - 28}
+                        y={0}
+                        width={56}
+                        height={230}
+                        fill="transparent"
+                      />
+
+                      {/* Inflow Circle */}
+                      <circle
+                        cx={pt.cx}
+                        cy={pt.cyInflow}
+                        r={isHovered ? 7.5 : pt.highlight ? 6 : 4.5}
+                        fill={isHovered ? '#007782' : pt.highlight ? '#ba1a1a' : '#005c65'}
+                        stroke="#ffffff"
+                        strokeWidth={isHovered ? 3 : 2}
+                        className="transition-all duration-200"
+                        filter={isHovered ? 'url(#glowCircle)' : undefined}
+                      />
+
+                      {/* Discharge Circle */}
+                      <circle
+                        cx={pt.cx}
+                        cy={pt.cyDischarge}
+                        r={isHovered ? 6 : 4}
+                        fill="#1560a4"
+                        stroke="#ffffff"
+                        strokeWidth={2}
+                        className="transition-all duration-200"
+                      />
+
+                      {/* Pulsing ring on hovered point */}
+                      {isHovered && (
+                        <circle
+                          cx={pt.cx}
+                          cy={pt.cyInflow}
+                          r={13}
+                          fill="none"
+                          stroke="#005c65"
+                          strokeWidth="1.5"
+                          strokeOpacity="0.5"
+                          className="animate-ping"
+                        />
+                      )}
+                    </g>
+                  );
+                })}
               </svg>
+
+              {/* Power BI Floating Data Preview Card */}
+              <AnimatePresence>
+                {hoveredChartPoint && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    style={{
+                      left: `${Math.min(Math.max((hoveredChartPoint.cx / 800) * 100, 15), 82)}%`,
+                      top: '10px'
+                    }}
+                    className="absolute -translate-x-1/2 z-20 pointer-events-none w-64 bg-slate-900/95 backdrop-blur-md text-white rounded-xl shadow-2xl border border-slate-700/80 p-3.5 text-xs"
+                  >
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+                      <div className="flex items-center gap-1.5 font-bold text-slate-200">
+                        <Clock className="w-3.5 h-3.5 text-teal-400" />
+                        <span>{hoveredChartPoint.time}</span>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        hoveredChartPoint.badge.includes('Surge') || hoveredChartPoint.badge.includes('Peak')
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                          : 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+                      }`}>
+                        {hoveredChartPoint.badge}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {/* Inflow Metric */}
+                      <div className="flex items-center justify-between bg-slate-800/60 p-1.5 rounded-lg">
+                        <span className="flex items-center gap-1.5 text-slate-300">
+                          <span className="w-2 h-2 rounded-full bg-[#007782]" />
+                          Inflow Visits:
+                        </span>
+                        <span className="font-bold text-white text-sm">
+                          {hoveredChartPoint.inflow} <span className="text-[10px] text-teal-400 font-normal">pts/hr</span>
+                        </span>
+                      </div>
+
+                      {/* Discharge Metric */}
+                      <div className="flex items-center justify-between bg-slate-800/60 p-1.5 rounded-lg">
+                        <span className="flex items-center gap-1.5 text-slate-300">
+                          <span className="w-2 h-2 rounded-full bg-[#1560a4]" />
+                          Turnover Discharges:
+                        </span>
+                        <span className="font-bold text-blue-300 text-sm">
+                          {hoveredChartPoint.discharge} <span className="text-[10px] text-slate-400 font-normal">cleared</span>
+                        </span>
+                      </div>
+
+                      {/* Velocity Delta & Triage Wait */}
+                      <div className="grid grid-cols-2 gap-1.5 pt-1 text-[11px] text-slate-400">
+                        <div>
+                          <span>Avg Triage Wait:</span>
+                          <span className="block font-bold text-slate-200">{hoveredChartPoint.wait}</span>
+                        </div>
+                        <div>
+                          <span>Bed Occupancy:</span>
+                          <span className="block font-bold text-emerald-400">{hoveredChartPoint.occupancy}%</span>
+                        </div>
+                      </div>
+
+                      <div className="pt-1.5 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
+                        <span className="truncate">{hoveredChartPoint.status}</span>
+                        <span className="text-teal-400 font-semibold">Net: {hoveredChartPoint.inflow >= hoveredChartPoint.discharge ? `+${hoveredChartPoint.inflow - hoveredChartPoint.discharge}` : hoveredChartPoint.inflow - hoveredChartPoint.discharge}</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            {/* Time labels */}
+            {/* Time labels below chart */}
             <div className="flex justify-between text-[11px] font-semibold text-slate-400 pt-2 px-1">
-              <span>06:00 AM</span>
-              <span>09:00 AM</span>
-              <span>12:00 PM (Peak Surge)</span>
-              <span>03:00 PM</span>
-              <span>06:00 PM</span>
-              <span>09:00 PM</span>
+              {currentChartPoints.map((pt, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setHoveredChartPoint(pt)}
+                  className={`transition-colors hover:text-primary ${
+                    hoveredChartPoint?.time === pt.time ? 'text-primary font-bold underline' : ''
+                  }`}
+                >
+                  {pt.time}
+                </button>
+              ))}
             </div>
           </div>
 
           <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
-            <span>Peak Patient Velocity: <b>38 visits/hour</b> at 11:30 AM</span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>
+                {timeFilter === '24h' && <>Peak Patient Velocity: <b className="text-slate-800 dark:text-slate-200">38 visits/hour</b> at 11:30 AM</>}
+                {timeFilter === '7d' && <>Peak Intake Day: <b className="text-slate-800 dark:text-slate-200">Wednesday</b> (465 visits / 96% occupancy)</>}
+                {timeFilter === '30d' && <>Monthly Peak Volume: <b className="text-slate-800 dark:text-slate-200">Week 3</b> (3,120 visits / 97% occupancy)</>}
+              </span>
+            </span>
             <button
               onClick={() => navigate('/dashboard/reception')}
               className="text-primary hover:underline font-bold flex items-center gap-1"
@@ -480,7 +696,7 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
           </div>
         </div>
 
-        {/* Right: Department Capacity & Occupancy Meters (4 Columns) */}
+        {/* Right: Department Capacity & Occupancy Meters (4 Columns) with Real-Time Persistence */}
         <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -488,25 +704,30 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
                 <Layers className="w-4 h-4 text-primary" />
                 <h3 className="font-bold text-sm text-slate-900 dark:text-white">Department Bed &amp; Chair Capacity</h3>
               </div>
-              <span className="text-[10px] font-bold bg-slate-100 px-2 py-0.5 rounded text-slate-600">Live</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded">
+                  Live
+                </span>
+              </div>
             </div>
 
             <div className="space-y-4 pt-4">
-              {mockDepartmentMetrics.map((dept) => (
-                <div key={dept.id} className="space-y-1.5">
+              {departmentMetrics.map((dept: any) => (
+                <div key={dept.id} className="space-y-1.5 group">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-slate-800 dark:text-slate-200">{dept.name}</span>
                     <span className="font-bold text-slate-900 dark:text-white">
                       {dept.occupied} / {dept.capacity} <span className="text-slate-400 font-normal">({dept.percentage}%)</span>
                     </span>
                   </div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden relative">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${dept.percentage}%` }}
                       transition={{ duration: 0.6 }}
-                      className={`h-full rounded-full ${dept.percentage >= 90 ? 'bg-red-500' : dept.percentage >= 80 ? 'bg-amber-500' : 'bg-primary'
-                        }`}
+                      className={`h-full rounded-full transition-colors ${
+                        dept.percentage >= 90 ? 'bg-red-500' : dept.percentage >= 80 ? 'bg-amber-500' : 'bg-primary'
+                      }`}
                     />
                   </div>
                   <div className="flex justify-between text-[10px] text-slate-400">
@@ -518,21 +739,44 @@ export default function Dashboard({ onNotify }: DashboardProps = {}) {
             </div>
           </div>
 
-          <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
             <div className="p-3 bg-primary/5 rounded-xl border border-primary/10 flex items-center justify-between">
               <div className="text-xs">
-                <span className="font-bold text-primary block">AI Operatory Rebalance</span>
+                <span className="font-bold text-primary block flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                  AI Operatory Rebalance
+                </span>
                 <span className="text-[11px] text-slate-500">Waitlist autogap buffer active</span>
               </div>
               <button
-                onClick={() => {
-                  showToast('success', 'Operatory Buffer Rebalanced', 'Waitlist gap-fills scheduled across Suite 3 and Suite 5');
-                }}
-                className="px-2.5 py-1 bg-primary text-white text-[11px] font-semibold rounded-lg hover:bg-primary-container transition-colors shadow-sm"
+                onClick={handleRebalanceOperatories}
+                disabled={isRebalancing}
+                className="px-3 py-1.5 bg-primary text-white text-[11px] font-semibold rounded-lg hover:bg-primary-container transition-all shadow-sm flex items-center gap-1 disabled:opacity-50"
               >
-                Optimize
+                {isRebalancing ? (
+                  <>
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    <span>Rebalancing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-3 h-3" />
+                    <span>Optimize</span>
+                  </>
+                )}
               </button>
             </div>
+
+            {hasCustomCapacity && (
+              <div className="flex justify-end">
+                <button
+                  onClick={handleResetCapacity}
+                  className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline"
+                >
+                  Reset Capacity to Baseline
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
