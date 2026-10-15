@@ -74,7 +74,15 @@ class ClinicDatabase {
 
       const storedPatients = localStorage.getItem(STORAGE_KEY_PATIENTS);
       if (storedPatients) {
-        this.patients = JSON.parse(storedPatients);
+        const parsed = JSON.parse(storedPatients);
+        if (Array.isArray(parsed) && parsed.length < mockPatientsEHR.length) {
+          const existingIds = new Set(parsed.map((p: any) => p.id));
+          const missing = mockPatientsEHR.filter((p) => !existingIds.has(p.id));
+          this.patients = [...parsed, ...missing];
+          this.persistPatients();
+        } else {
+          this.patients = parsed;
+        }
       } else {
         this.patients = [...mockPatientsEHR];
         this.persistPatients();

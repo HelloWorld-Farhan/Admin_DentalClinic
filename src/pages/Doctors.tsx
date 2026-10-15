@@ -28,6 +28,7 @@ import { useClinicDB } from '../lib/db';
 import { Doctor } from '../types';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { ModalPortal } from '../components/ModalPortal';
+import { PaginationControls } from '../components/PaginationControls';
 
 interface DoctorsProps {
   onNotify?: (title: string, message: string, type: 'critical' | 'financial' | 'triage' | 'system') => void;
@@ -188,12 +189,29 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
     });
   }, [doctorsList, searchQuery, statusFilter, specialtyFilter]);
 
+  // Pagination State (5 items per page default as chosen)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, specialtyFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredDoctors.length / pageSize));
+
+  const paginatedDoctors = useMemo(() => {
+    const safePage = Math.min(Math.max(1, currentPage), totalPages);
+    const start = (safePage - 1) * pageSize;
+    return filteredDoctors.slice(start, start + pageSize);
+  }, [filteredDoctors, currentPage, pageSize, totalPages]);
+
   const hasActiveFilters = statusFilter !== 'All' || specialtyFilter !== 'All Specialties' || searchQuery.trim() !== '';
 
   const handleResetFilters = () => {
     setStatusFilter('All');
     setSpecialtyFilter('All Specialties');
     setSearchQuery('');
+    setCurrentPage(1);
   };
 
   const handleCreateDoctor = (e: React.FormEvent) => {
@@ -504,7 +522,7 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
                   </td>
                 </tr>
               ) : (
-                filteredDoctors.map((doc) => (
+                paginatedDoctors.map((doc) => (
                   <tr 
                     key={doc.id}
                     className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
@@ -580,6 +598,20 @@ export default function Doctors({ onNotify }: DoctorsProps = {}) {
             </tbody>
           </table>
         </div>
+
+        {/* Doctor Directory Pagination Controls */}
+        <PaginationControls
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={filteredDoctors.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[5, 8, 10, 20]}
+          itemLabel="practitioners"
+        />
       </div>
 
       {/* Doctor Detail Inspection & Modify Shift Modal */}

@@ -31,6 +31,7 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { ModalPortal } from '../components/ModalPortal';
 import { useClinicDB } from '../lib/db';
 import { MasterEHRModal } from '../components/MasterEHRModal';
+import { PaginationControls } from '../components/PaginationControls';
 
 interface PatientsProps {
   onNotify?: (title: string, message: string, type: 'critical' | 'financial' | 'triage' | 'system') => void;
@@ -141,11 +142,40 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
     });
   }, [patients, searchQuery, selectedWard, selectedAcuity, selectedInsurance]);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+
+  // Auto-reset to page 1 whenever any filter or search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedWard, selectedAcuity, selectedInsurance]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredPatients.length / pageSize));
+
+  // Paginated patients slice for clean page-by-page display
+  const paginatedPatients = useMemo(() => {
+    const safePage = Math.min(Math.max(1, currentPage), totalPages);
+    const start = (safePage - 1) * pageSize;
+    return filteredPatients.slice(start, start + pageSize);
+  }, [filteredPatients, currentPage, pageSize, totalPages]);
+
+  // Keep selected patient in sync with active page
+  useEffect(() => {
+    if (paginatedPatients.length > 0) {
+      const isSelectedInPage = paginatedPatients.some((p) => p.id === selectedPatient?.id);
+      if (!isSelectedInPage) {
+        setSelectedPatient(paginatedPatients[0]);
+      }
+    }
+  }, [paginatedPatients, selectedPatient?.id]);
+
   const handleResetFilters = () => {
     setSearchQuery('');
     setSelectedWard('ALL');
     setSelectedAcuity('ALL');
     setSelectedInsurance('ALL');
+    setCurrentPage(1);
   };
 
   const handleCreateAdmission = (e: React.FormEvent) => {
@@ -755,130 +785,155 @@ export const Patients: React.FC<PatientsProps> = ({ onNotify, onOpenPowerBI, onO
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
-                {filteredPatients.map((p) => {
-                  const isSelected = selectedPatient?.id === p.id;
-                  return (
-                    <tr
-                      key={p.id}
-                      onClick={() => {
-                        setSelectedPatient(p);
-                        setDrawerOpen(true);
-                      }}
-                      className={`hover:bg-slate-50/80 transition-colors cursor-pointer group ${
-                        isSelected ? 'bg-teal-50/60 dark:bg-teal-950/20' : ''
-                      }`}
-                    >
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-700 shrink-0 border border-slate-200">
-                            {p.name.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-semibold text-slate-900 group-hover:text-[#005c65] transition-colors">
-                                {p.name}
-                              </span>
-                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600 font-bold">
-                                {p.gender} • {p.age}y
-                              </span>
-                            </div>
-                            <span className="text-xs font-mono text-[#005c65] font-semibold">{p.mrn}</span>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="py-3.5 px-4">
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-slate-900">{p.attendingPhysician}</span>
-                          <span className="text-xs text-blue-600 font-medium">{p.department}</span>
-                        </div>
-                      </td>
-
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-1.5">
-                          <Bed className="w-4 h-4 text-[#005c65]" />
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-slate-900">{p.room}</span>
-                            <span className="text-xs text-slate-400">Telemetry Active</span>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="py-3.5 px-4">
-                        <div className="flex flex-col max-w-[220px]">
-                          <span className="font-medium text-slate-800 truncate">{p.chiefComplaint}</span>
-                          <span className="text-xs text-slate-400 truncate">
-                            {p.recentProcedures[0] || 'Workup in progress'}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="py-3.5 px-4">{getAcuityBadge(p.acuity)}</td>
-
-                      <td className="py-3.5 px-4">
-                        <div className="flex flex-col">
-                          <span className="text-xs font-semibold text-slate-800">{p.admissionDate}</span>
-                          <span className="text-xs text-slate-500 font-medium truncate max-w-[140px]">
-                            {p.insurance}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="py-3.5 px-4 text-right">
-                        <div
-                          className="flex items-center justify-end gap-1.5"
-                          onClick={(e) => e.stopPropagation()}
+                {paginatedPatients.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Users className="w-8 h-8 text-slate-300" />
+                        <span className="font-semibold text-slate-600">No patients match your search or filter</span>
+                        <button
+                          onClick={handleResetFilters}
+                          className="text-xs text-[#005c65] font-bold hover:underline"
                         >
-                          <button
-                            onClick={() => {
-                              setSelectedPatient(p);
-                              setVitalsModalOpen(true);
-                            }}
-                            className="p-1.5 rounded-lg text-teal-700 hover:bg-teal-50 transition-colors"
-                            title="Continuous Vitals Telemetry"
-                          >
-                            <Activity className="w-4 h-4" />
-                          </button>
+                          Reset Filters
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedPatients.map((p) => {
+                    const isSelected = selectedPatient?.id === p.id;
+                    return (
+                      <tr
+                        key={p.id}
+                        onClick={() => {
+                          setSelectedPatient(p);
+                          setDrawerOpen(true);
+                        }}
+                        className={`hover:bg-slate-50/80 transition-colors cursor-pointer group ${
+                          isSelected ? 'bg-teal-50/60 dark:bg-teal-950/20' : ''
+                        }`}
+                      >
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-700 shrink-0 border border-slate-200">
+                              {p.name.slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold text-slate-900 group-hover:text-[#005c65] transition-colors">
+                                  {p.name}
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600 font-bold">
+                                  {p.gender} • {p.age}y
+                                </span>
+                              </div>
+                              <span className="text-xs font-mono text-[#005c65] font-semibold">{p.mrn}</span>
+                            </div>
+                          </div>
+                        </td>
 
-                          <button
-                            onClick={() => {
-                              setSelectedPatient(p);
-                              setRxModalOpen(true);
-                            }}
-                            className="p-1.5 rounded-lg text-blue-700 hover:bg-blue-50 transition-colors"
-                            title="Active Prescriptions"
-                          >
-                            <Pill className="w-4 h-4" />
-                          </button>
+                        <td className="py-3.5 px-4">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-slate-900">{p.attendingPhysician}</span>
+                            <span className="text-xs text-blue-600 font-medium">{p.department}</span>
+                          </div>
+                        </td>
 
-                          <button
-                            onClick={() => {
-                              setSelectedPatient(p);
-                              setDrawerOpen(true);
-                            }}
-                            className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
-                            title="Inspect Full EHR Drawer"
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-1.5">
+                            <Bed className="w-4 h-4 text-[#005c65]" />
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-slate-900">{p.room}</span>
+                              <span className="text-xs text-slate-400">Telemetry Active</span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="flex flex-col max-w-[220px]">
+                            <span className="font-medium text-slate-800 truncate">{p.chiefComplaint}</span>
+                            <span className="text-xs text-slate-400 truncate">
+                              {p.recentProcedures[0] || 'Workup in progress'}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4">{getAcuityBadge(p.acuity)}</td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="flex flex-col">
+                            <span className="text-xs font-semibold text-slate-800">{p.admissionDate}</span>
+                            <span className="text-xs text-slate-500 font-medium truncate max-w-[140px]">
+                              {p.insurance}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          <div
+                            className="flex items-center justify-end gap-1.5"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <FileText className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                            <button
+                              onClick={() => {
+                                setSelectedPatient(p);
+                                setVitalsModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg text-teal-700 hover:bg-teal-50 transition-colors"
+                              title="Continuous Vitals Telemetry"
+                            >
+                              <Activity className="w-4 h-4" />
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setSelectedPatient(p);
+                                setRxModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg text-blue-700 hover:bg-blue-50 transition-colors"
+                              title="Active Prescriptions"
+                            >
+                              <Pill className="w-4 h-4" />
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setSelectedPatient(p);
+                                setDrawerOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+                              title="Inspect Full EHR Drawer"
+                            >
+                              <FileText className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
 
-          {/* Table Footer */}
-          <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
-            <span>
-              Showing <strong className="text-slate-800">{filteredPatients.length}</strong> of{' '}
-              <strong className="text-slate-800">{patients.length}</strong> patient records
-            </span>
-            <div className="flex items-center gap-1">
-              <span className="text-slate-400">Central Memorial Hospital EHR • HIPAA Audited</span>
-            </div>
+          {/* Interactive Next/Prev Pagination Controls */}
+          <PaginationControls
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalItems={filteredPatients.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setCurrentPage(1);
+            }}
+            pageSizeOptions={[5, 8, 10, 20]}
+            itemLabel="patients"
+          />
+
+          <div className="px-4 py-2 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+            <span>Clinical Data Sync: Central Memorial Hospital EHR • Encrypted TLS 1.3</span>
+            <span className="font-semibold text-teal-700">HIPAA Audited &amp; Compliant</span>
           </div>
         </div>
 
