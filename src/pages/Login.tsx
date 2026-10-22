@@ -228,11 +228,39 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
   };
 
   return (
-    <div className="bg-[#f7fafc] font-sans text-slate-800 min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
-      <div className="w-full max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-          {/* LEFT HERO PANEL */}
-          <div className="lg:col-span-5 flex flex-col justify-between bg-[#005c65] text-white rounded-2xl p-6 sm:p-8 lg:p-10 relative overflow-hidden shadow-2xl">
+    <div className="bg-[#f7fafc] font-sans text-slate-800 min-h-screen flex flex-col justify-between selection:bg-secondary-fixed selection:text-on-secondary-fixed relative">
+      {/* Top Header */}
+      <header className="w-full bg-white/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,119,130,0.06)] border-b border-slate-200 z-30">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <div className="w-9 h-9 rounded-xl bg-teal-600/10 border border-teal-600/20 text-teal-700 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+              <span className="material-symbols-outlined text-[24px]">dentistry</span>
+            </div>
+            <span className="font-headline font-bold text-xl text-teal-800">Smile Clinic</span>
+          </Link>
+
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:flex items-center gap-1.5 text-slate-600 text-xs font-medium bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+              <span className="material-symbols-outlined text-[16px] text-teal-700">verified_user</span>
+              <span>HIPAA Compliant 256-Bit SSL</span>
+            </div>
+            <Link
+              to="/support"
+              className="flex items-center gap-1.5 text-slate-600 hover:text-teal-700 transition-colors text-xs font-semibold"
+            >
+              <span className="material-symbols-outlined text-[18px]">help_outline</span>
+              <span>Support</span>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Login Viewport */}
+      <main className="w-full flex-1 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
+        <div className="w-full max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+            {/* LEFT HERO PANEL */}
+            <div className="lg:col-span-5 flex flex-col justify-between bg-[#005c65] text-white rounded-2xl p-6 sm:p-8 lg:p-10 relative overflow-hidden shadow-2xl">
             {/* Ambient glows */}
             <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-[#1560a4] opacity-35 blur-3xl pointer-events-none" />
             <div className="absolute bottom-0 right-0 w-72 h-72 rounded-full bg-[#007877] opacity-45 blur-3xl pointer-events-none" />
@@ -861,6 +889,23 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin', onNotify, 
           </div>
         </div>
       </div>
+    </main>
+
+      {/* Standard Legal Footer */}
+      <footer className="w-full bg-slate-100 py-4 border-t border-slate-200 shadow-[0_-1px_8px_rgba(0,119,130,0.03)] z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-600 text-xs text-center sm:text-left">
+          <div className="flex items-center justify-center sm:justify-start gap-1.5">
+            <span className="material-symbols-outlined text-[16px] text-teal-700">shield_with_heart</span>
+            <span>© 2026 Smile Clinic Health System. All health records encrypted.</span>
+          </div>
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-4 sm:gap-6 text-[11px] font-medium">
+            <Link to="/privacy-policy" className="hover:text-teal-800 transition-colors">Privacy Policy</Link>
+            <Link to="/terms-of-service" className="hover:text-teal-800 transition-colors">Terms of Service</Link>
+            <Link to="/patient-rights" className="hover:text-teal-800 transition-colors">Patient Rights</Link>
+            <Link to="/support" className="hover:text-teal-800 transition-colors">Support Desk</Link>
+          </div>
+        </div>
+      </footer>
 
       {/* ===================== DUAL OTP VERIFICATION MODAL ===================== */}
       <AnimatePresence>

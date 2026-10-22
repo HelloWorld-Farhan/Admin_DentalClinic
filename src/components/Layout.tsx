@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -585,6 +585,24 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
                         <BellRing className="w-4 h-4 text-slate-400" />
                         <span>Emergency Front-Desk Triage</span>
                       </button>
+
+                      <Link
+                        to="/support"
+                        onClick={() => setProfileOpen(false)}
+                        className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-primary flex items-center gap-2.5 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[18px] text-teal-700">support_agent</span>
+                        <span>Support & Helpdesk</span>
+                      </Link>
+
+                      <Link
+                        to="/patient-rights"
+                        onClick={() => setProfileOpen(false)}
+                        className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-primary flex items-center gap-2.5 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[18px] text-teal-700">assignment_turned_in</span>
+                        <span>Patient Rights</span>
+                      </Link>
                     </div>
 
                     <div className="border-t border-slate-100 pt-1.5 mt-1">
@@ -784,8 +802,26 @@ export default function Layout({ onLogout }: LayoutProps = {}) {
         </AnimatePresence>
 
         {/* Inner Page Content - ONLY this area scrolls vertically! */}
-        <main className="flex-1 p-3 sm:p-6 lg:p-8 max-w-full overflow-y-auto h-full">
-          <Outlet context={{ showToast, openPowerBi: () => setPowerBiOpen(true), openExport: () => setExportOpen(true), openBroadcast: () => setBroadcastModalOpen(true) }} />
+        <main className="flex-1 p-3 sm:p-6 lg:p-8 max-w-full overflow-y-auto h-full flex flex-col justify-between">
+          <div>
+            <Outlet context={{ showToast, openPowerBi: () => setPowerBiOpen(true), openExport: () => setExportOpen(true), openBroadcast: () => setBroadcastModalOpen(true) }} />
+          </div>
+
+          {/* Standard Legal Footer */}
+          <footer className="w-full bg-slate-100 py-4 border-t border-slate-200 mt-10 rounded-xl px-4 sm:px-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-600 text-xs text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-start gap-1.5">
+                <span className="material-symbols-outlined text-[16px] text-teal-700">shield_with_heart</span>
+                <span>© 2026 Smile Clinic Health System. All health records encrypted.</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-center sm:justify-end gap-4 sm:gap-6 text-[11px] font-medium">
+                <Link to="/privacy-policy" className="hover:text-teal-800 transition-colors">Privacy Policy</Link>
+                <Link to="/terms-of-service" className="hover:text-teal-800 transition-colors">Terms of Service</Link>
+                <Link to="/patient-rights" className="hover:text-teal-800 transition-colors">Patient Rights</Link>
+                <Link to="/support" className="hover:text-teal-800 transition-colors">Support Desk</Link>
+              </div>
+            </div>
+          </footer>
         </main>
       </div>
     </div>

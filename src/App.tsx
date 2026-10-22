@@ -14,6 +14,10 @@ const Laboratory = lazy(() => import('./pages/Laboratory').then((m) => ({ defaul
 const Login = lazy(() => import('./pages/Login').then((m) => ({ default: m.Login })));
 const Signup = lazy(() => import('./pages/Signup').then((m) => ({ default: m.Signup })));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword').then((m) => ({ default: m.ForgotPassword })));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./pages/TermsOfService'));
+const PatientRights = lazy(() => import('./pages/PatientRights'));
+const Support = lazy(() => import('./pages/Support'));
 
 // Sleek, modern healthcare loading fallback
 function WorkspaceLoader() {
@@ -71,6 +75,18 @@ export default function App() {
           <Route path="/login" element={<Login onNotify={handleNotify} onLoginSuccess={handleLoginSuccess} />} />
           <Route path="/signup" element={<Signup onNotify={handleNotify} onLoginSuccess={handleLoginSuccess} />} />
           <Route path="/forgot-password" element={<ForgotPassword onNotify={handleNotify} />} />
+
+          {/* Informational & Support Routes */}
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
+          <Route path="/patient-rights" element={<PatientRights />} />
+          <Route path="/support" element={<Support />} />
+
+          {/* Legacy clean redirects */}
+          <Route path="/dashboard/support" element={<Navigate to="/support" replace />} />
+          <Route path="/dashboard/privacy-policy" element={<Navigate to="/privacy-policy" replace />} />
+          <Route path="/dashboard/terms-of-service" element={<Navigate to="/terms-of-service" replace />} />
+          <Route path="/dashboard/patient-rights" element={<Navigate to="/patient-rights" replace />} />
 
           {/* Protected Admin App under Layout - Only accessible after Login */}
           <Route 
